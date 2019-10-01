@@ -2,7 +2,9 @@ package parser.task;
 
 public class Edge {
 
-    private String Source, Dest;
+    private String Source;
+
+    private Task Dest;
 
     private int Cost;
 
@@ -14,11 +16,11 @@ public class Edge {
         Source = source;
     }
 
-    public String getDest() {
+    public Task getDest() {
         return Dest;
     }
 
-    public void setDest(String dest) {
+    public void setDest(Task dest) {
         Dest = dest;
     }
 

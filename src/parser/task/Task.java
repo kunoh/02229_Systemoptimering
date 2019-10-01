@@ -1,10 +1,17 @@
 package parser.task;
 
+import java.util.List;
+
 public class Task {
 
     private String Id, Name;
 
     private int Wcet, Period, Deadline;
+
+    private List<Edge> Edges;
+
+    public Task() {
+    }
 
     public String getId() {
         return Id;
