@@ -8,6 +8,12 @@ public class Edge {
 
     private int Cost;
 
+    public Edge(String source, Task dest, int cost) {
+        this.Source = source;
+        this.Dest = dest;
+        this.Cost = cost;
+    }
+
     public String getSource() {
         return Source;
     }
