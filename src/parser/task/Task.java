@@ -1,5 +1,6 @@
 package parser.task;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class Task {
@@ -10,7 +11,17 @@ public class Task {
 
     private List<Edge> Edges;
 
-    public Task() {
+    public Task(String id, String name, int wcet, int period, int deadline) {
+        this.Id = id;
+        this.Name = name;
+        this.Wcet = wcet;
+        this.Period = period;
+        this.Deadline = deadline;
+        this.Edges = new ArrayList<>();
+    }
+
+    public void addEdge(Edge edge) {
+        this.Edges.add(edge);
     }
 
     public String getId() {

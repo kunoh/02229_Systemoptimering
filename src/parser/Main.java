@@ -1,18 +1,26 @@
 package parser;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.DocumentBuilder;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.Node;
 import org.w3c.dom.Element;
+import parser.task.Edge;
+import parser.task.Task;
 
 public class Main {
 
     public static void main(String[] args) {
 
         try {
+            Map<String, Task> tasks = new HashMap<>();
+
             File inputFile = new File("test\\Selected exercise test cases\\Case 3\\Case3.tsk");
             DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
             DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
@@ -28,16 +36,26 @@ public class Main {
 
                 if (n.getNodeType() == Node.ELEMENT_NODE) {
                     Element node = (Element) n;
+
+                    String id = node.getAttribute("Id");
+                    String name = node.getAttribute("Name");
+                    int wcet = Integer.parseInt(node.getAttribute("WCET"));
+                    int period = Integer.parseInt(node.getAttribute("Period"));
+                    int deadline = Integer.parseInt(node.getAttribute("Deadline"));
+
+                    Task task = new Task(id, name, wcet, period, deadline);
+                    tasks.put(name, task);
+
                     System.out.println("Id : "
-                            + node.getAttribute("Id"));
+                            + id);
                     System.out.println("Name : "
-                            + node.getAttribute("Name"));
+                            + name);
                     System.out.println("WCET : "
-                            + node.getAttribute("WCET"));
+                            + wcet);
                     System.out.println("Period : "
-                            + node.getAttribute("Period"));
+                            + period);
                     System.out.println("Deadline : "
-                            + node.getAttribute("Deadline"));
+                            + deadline);
                 }
             }
 
@@ -63,12 +81,21 @@ public class Main {
                         System.out.println("\nCurrent Element :" + e.getNodeName());
                         if (n.getNodeType() == Node.ELEMENT_NODE){
                             Element edge = (Element) e;
+
+                            String source = edge.getAttribute("Source");
+                            String dest = edge.getAttribute("Dest");
+                            int cost = Integer.parseInt(edge.getAttribute("Cost"));
+
+                            Edge taskEdge = new Edge(source, tasks.get(dest), cost);
+
+                            tasks.get(source).addEdge(taskEdge);
+
                             System.out.println("Source : "
-                                    + edge.getAttribute("Source"));
+                                    + source);
                             System.out.println("Dest : "
-                                    + edge.getAttribute("Dest"));
+                                    + dest);
                             System.out.println("Cost : "
-                                    + edge.getAttribute("Cost"));
+                                    + cost);
                         }
                     }
                 }
