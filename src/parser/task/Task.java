@@ -6,6 +6,14 @@ public class Task {
 
     private int Wcet, Period, Deadline;
 
+    public String getId() {
+        return Id;
+    }
+
+    public void setId(String id) {
+        Id = id;
+    }
+
     public String getName() {
         return Name;
     }
