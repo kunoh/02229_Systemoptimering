@@ -2,9 +2,9 @@ package parser.task;
 
 public class Task {
 
-    public String Id, Name;
+    private String Id, Name;
 
-    public int Wcet, Period, Deadline;
+    private int Wcet, Period, Deadline;
 
     public String getName() {
         return Name;
