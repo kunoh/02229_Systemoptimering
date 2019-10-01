@@ -13,7 +13,7 @@ public class Main {
     public static void main(String[] args) {
 
         try {
-            File inputFile = new File("C:\\Users\\Kunoh\\Desktop\\Systemoptimering\\Selected exercise test cases\\Selected exercise test cases\\Case 3\\case3.tsk");
+            File inputFile = new File("test\\Selected exercise test cases\\Case 3\\Case3.tsk");
             DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
             DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
             Document doc = dBuilder.parse(inputFile);
