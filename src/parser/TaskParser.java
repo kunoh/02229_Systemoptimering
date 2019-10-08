@@ -17,7 +17,7 @@ import parser.task.Task;
 
 public class TaskParser {
 
-	private Map<String, Task> tasks;
+	private Map<String, Task> tasks = new HashMap<>();
 
 	public TaskParser() {
 		Map<String, Task> tasks = new HashMap<>();
