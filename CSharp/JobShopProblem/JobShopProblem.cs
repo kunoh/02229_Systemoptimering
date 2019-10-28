@@ -63,7 +63,11 @@ namespace JobShopProblem
         /// <param name="solver">The cp solver used to solve the model</param>
         /// <param name="tasks">Dictionary of tasks</param>
         /// <returns>List of <see cref="AssignedTask"/> objects</returns>
-        private static List<List<AssignedTask>> AssignTasks(int machinesCount, List<List<(int, int)>> jobs, CpSolver solver, Dictionary<(int, int), Task> tasks)
+        private static List<List<AssignedTask>> AssignTasks(
+            int machinesCount, 
+            List<List<(int, int)>> jobs, 
+            CpSolver solver, 
+            Dictionary<(int, int), Task> tasks)
         {
             var assignedTasks = new List<List<AssignedTask>>();
 
