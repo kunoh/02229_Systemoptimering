@@ -23,7 +23,7 @@ namespace JobShopProblem
             var machines = new List<int>();
             InitMachinesList(machinesCount, machines);
 
-            // Largest duration of a single task
+            // Total duration of a single task
             var horizon = jobs.Sum(job => job.Sum(task => task.Item2));
             
             // -- ADD VARIABLES TO MODEL --
