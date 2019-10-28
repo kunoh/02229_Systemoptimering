@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<graphml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Graph>
+    <Node Id="1" Name="A" WCET="2000" Period="20000" Deadline="20000" />
+    <Node Id="2" Name="B" WCET="4000" Period="20000" Deadline="20000" />
+    <Node Id="3" Name="C" WCET="4000" Period="20000" Deadline="20000" />
+    <Node Id="4" Name="D" WCET="2000" Period="20000" Deadline="20000" />
+    <Node Id="5" Name="E" WCET="3000" Period="20000" Deadline="20000" />
+    <Node Id="6" Name="F" WCET="3000" Period="20000" Deadline="20000" />
+    <Node Id="7" Name="G" WCET="2000" Period="20000" Deadline="20000" />
+    <Node Id="8" Name="H" WCET="1000" Period="20000" Deadline="20000" />
+    <Node Id="9" Name="I" WCET="1000" Period="20000" Deadline="20000" />
+    <Node Id="10" Name="J" WCET="2000" Period="20000" Deadline="20000" />
+    <Node Id="11" Name="K" WCET="2000" Period="20000" Deadline="20000" />
+    <Node Id="12" Name="L" WCET="2000" Period="20000" Deadline="20000" />
+    <Node Id="13" Name="M" WCET="3000" Period="20000" Deadline="20000" />
+    <Node Id="14" Name="N" WCET="4000" Period="20000" Deadline="20000" />
+    <Node Id="15" Name="O" WCET="4000" Period="20000" Deadline="20000" />
+    <Node Id="16" Name="P" WCET="1000" Period="20000" Deadline="20000" />
+    <Node Id="17" Name="Q" WCET="3000" Period="20000" Deadline="20000" />
+    <Node Id="18" Name="R" WCET="2000" Period="20000" Deadline="20000" />
+    <Node Id="19" Name="S" WCET="3000" Period="20000" Deadline="20000" />
+    <Node Id="20" Name="T" WCET="4000" Period="20000" Deadline="20000" />
+    <Node Id="21" Name="U" WCET="4000" Period="20000" Deadline="20000" />
+    <Node Id="22" Name="V" WCET="1000" Period="20000" Deadline="20000" />
+    <Node Id="23" Name="W" WCET="3000" Period="20000" Deadline="20000" />
+    <Node Id="24" Name="X" WCET="2000" Period="20000" Deadline="20000" />
+
+    <TaskGraph Name="Graph0">
+      <Edge Source="A" Dest="B" Cost="400"/>
+	  <Edge Source="A" Dest="C" Cost="400"/>
+	  <Edge Source="C" Dest="D" Cost="400"/>
+	  <Edge Source="B" Dest="D" Cost="400"/>
+	  <Edge Source="D" Dest="F" Cost="800"/>
+	  <Edge Source="D" Dest="G" Cost="600"/>
+    </TaskGraph>
+	<TaskGraph Name="Graph1">
+      <Edge Source="H" Dest="I" Cost="300"/>
+	  <Edge Source="I" Dest="J" Cost="400"/>
+	  <Edge Source="J" Dest="K" Cost="300"/>
+    </TaskGraph>
+	<TaskGraph Name="Graph2">
+	  <Edge Source="L" Dest="M" Cost="100"/>
+	  <Edge Source="L" Dest="N" Cost="100"/>
+	  <Edge Source="N" Dest="O" Cost="100"/>
+	  <Edge Source="O" Dest="P" Cost="100"/>
+	  <Edge Source="M" Dest="P" Cost="400"/>
+	  <Edge Source="M" Dest="Q" Cost="800"/>
+	  <Edge Source="P" Dest="R" Cost="300"/>
+	  <Edge Source="O" Dest="R" Cost="300"/>
+    </TaskGraph>
+	<TaskGraph Name="Graph3">
+	  <Edge Source="R" Dest="S" Cost="200"/>
+	  <Edge Source="S" Dest="T" Cost="100"/>
+	  <Edge Source="S" Dest="U" Cost="200"/>
+	  <Edge Source="U" Dest="V" Cost="100"/>
+	  <Edge Source="T" Dest="W" Cost="400"/>
+	  <Edge Source="W" Dest="V" Cost="300"/>
+	  <Edge Source="V" Dest="X" Cost="400"/>
+    </TaskGraph>
+  </Graph>
+</graphml>
