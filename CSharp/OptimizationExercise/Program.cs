@@ -11,7 +11,7 @@ namespace OptimizationExercise
 {
     public static class Program
     {
-        private const string CaseNumber = "2";
+        private const string CaseNumber = "1";
         private static readonly string DirectoryName = $"..\\..\\..\\Cases\\Case {CaseNumber}\\";
         private static readonly string GraphFileName = $"{DirectoryName}Case{CaseNumber}.tsk";
         private static readonly string CpuFileName = $"{DirectoryName}Case{CaseNumber}.cfg";
@@ -43,6 +43,13 @@ namespace OptimizationExercise
             
             var tasks = new Dictionary<(int, int), Task>();
 
+            var ids = new List<List<IntVar>>();
+
+            for (int node = 0; node < nodeCount; node++)
+            {
+                ids.Add(new List<IntVar>());
+            }
+
             for (var core = 0; core < coreCount; core++)
             {
                 for (var node = 0; node < nodeCount; node++)
@@ -51,15 +58,17 @@ namespace OptimizationExercise
                     
                     var start = model.NewIntVar(0, horizon, $"start_{core}_{nodeObject.Name}");
                     var end = model.NewIntVar(0, horizon, $"end_{core}_{nodeObject.Name}");
-                    var interval = model.NewIntervalVar(start, nodeObject.Wcet, end, $"interval_{core}_{nodeObject.Name}");
-                    var id = model.NewBoolVar($"{node}");
+                    var active = model.NewBoolVar($"{node}");
+                    var interval = model.NewOptionalIntervalVar(start, nodeObject.Wcet, end, active,$"interval_{core}_{nodeObject.Name}" );
+                    
+                    
                     
                     tasks[(core, node)] = new Task
                     {
                         Start = start,
                         End = end,
                         Interval = interval,
-                        Id = id
+                        IsActive = active
                     };
                     
                     coreIntervals[core].Add(interval);
@@ -69,7 +78,19 @@ namespace OptimizationExercise
             // Ensure nodes don't overlap
             for (var core = 0; core < coreCount; core++)
             {
-                model.AddNoOverlap(coreIntervals[core]);;
+                model.AddNoOverlap(coreIntervals[core]);
+            }
+
+            for (var node = 0; node < nodeCount; node++)
+            {
+                //model.Add(LinearExpr.Sum(tasks.Where(task => task.Key.Item2 == node).Select(task => task.Value.IsActive)) == 1);
+                var assigned = new List<IntVar>();
+                for (var core = 0; core < coreCount; core++)
+                {
+                    assigned.Add(tasks[(core, node)].IsActive);
+                }
+
+                model.Add(LinearExpr.Sum(assigned) == 1);
             }
 
             // Ensure that a node isn't scheduled until after its predecessor has finished
@@ -99,6 +120,7 @@ namespace OptimizationExercise
             model.Minimize(makespan);
 
             var solver = new CpSolver();
+            solver.SearchAllSolutions(model, new Printer());
             var status = solver.Solve(model);
 
             if (status == CpSolverStatus.Optimal)
@@ -116,14 +138,16 @@ namespace OptimizationExercise
                 {
                     for (var node = 0; node < nodeCount; node++)
                     {
-                        var machine = core;
-                        assignedTasks[machine].Add(new AssignedTask
+                        if (solver.Value(tasks[(core, node)].IsActive) == 1)
                         {
-                            Start = solver.Value(tasks[(core, node)].Start),
-                            Core = core,
-                            Index = scenario.Graph.Nodes[node].Name,
-                            Duration = scenario.Graph.Nodes[node].Wcet
-                        });
+                            assignedTasks[core].Add(new AssignedTask
+                            {
+                                Start = solver.Value(tasks[(core, node)].Start),
+                                Core = core,
+                                Index = scenario.Graph.Nodes[node].Name,
+                                Duration = scenario.Graph.Nodes[node].Wcet
+                            });
+                        }
                     }
                 }
 

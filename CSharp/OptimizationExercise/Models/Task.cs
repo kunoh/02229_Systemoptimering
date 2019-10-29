@@ -7,6 +7,6 @@ namespace OptimizationExercise.Models
         public IntVar Start { get; set; }
         public IntVar End { get; set; }
         public IntervalVar Interval { get; set; }
-        public IntVar Id { get; set; }
+        public IntVar IsActive { get; set; }
     }
 }
