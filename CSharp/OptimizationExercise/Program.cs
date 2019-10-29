@@ -11,7 +11,7 @@ namespace OptimizationExercise
 {
     public static class Program
     {
-        private const string CaseNumber = "1";
+        private const string CaseNumber = "2";
         private static readonly string DirectoryName = $"..\\..\\..\\Cases\\Case {CaseNumber}\\";
         private static readonly string GraphFileName = $"{DirectoryName}Case{CaseNumber}.tsk";
         private static readonly string CpuFileName = $"{DirectoryName}Case{CaseNumber}.cfg";
@@ -138,16 +138,14 @@ namespace OptimizationExercise
                 {
                     for (var node = 0; node < nodeCount; node++)
                     {
-                        if (solver.Value(tasks[(core, node)].IsActive) == 1)
-                        {
                             assignedTasks[core].Add(new AssignedTask
                             {
                                 Start = solver.Value(tasks[(core, node)].Start),
                                 Core = core,
                                 Index = scenario.Graph.Nodes[node].Name,
-                                Duration = scenario.Graph.Nodes[node].Wcet
+                                Duration = scenario.Graph.Nodes[node].Wcet,
+                                IsActive = solver.Value(tasks[(core, node)].IsActive)
                             });
-                        }
                     }
                 }
 
@@ -156,18 +154,24 @@ namespace OptimizationExercise
                     assignedTasks[core] = assignedTasks[core].OrderBy(task => task.Start).ToList();
                     var solutionLineTasks = $"Core {core}: ";
                     var solutionLine = "        ";
-
+                    
                     for (var task = 0; task < assignedTasks[core].Count; task++)
                     {
                         var assignedTask = assignedTasks[core][task];
-                        var name = $"Node: {assignedTask.Index} ";
-                        solutionLineTasks += $"{name,-15}";
-
+                        if (assignedTask.IsActive == 1)
+                        {
+                            var name = $"Node: {assignedTask.Index} ";
+                            solutionLineTasks += $"{name,-15}";
+                        }
+                        
+                        var solutionTemp = string.Empty;
                         var start = assignedTask.Start;
                         var duration = assignedTask.Duration;
-                        var solutionTemp = $"[{start}, {start + duration}]";
-
-                        solutionLine += $"{solutionTemp,-15}";
+                        if (assignedTask.IsActive == 1)
+                        {
+                            solutionTemp = $"[{start}, {start + duration}]";
+                            solutionLine += $"{solutionTemp,-15}";
+                        }
                     }
 
                     solutionLine += "\n";
