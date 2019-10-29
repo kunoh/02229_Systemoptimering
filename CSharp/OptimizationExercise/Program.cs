@@ -11,7 +11,7 @@ namespace OptimizationExercise
 {
     public static class Program
     {
-        private const string CaseNumber = "2";
+        private const string CaseNumber = "4";
         private static readonly string DirectoryName = $"..\\..\\..\\Cases\\Case {CaseNumber}\\";
         private static readonly string GraphFileName = $"{DirectoryName}Case{CaseNumber}.tsk";
         private static readonly string CpuFileName = $"{DirectoryName}Case{CaseNumber}.cfg";
@@ -120,70 +120,70 @@ namespace OptimizationExercise
             model.Minimize(makespan);
 
             var solver = new CpSolver();
-            solver.SearchAllSolutions(model, new Printer());
-            var status = solver.Solve(model);
+            solver.SearchAllSolutions(model, new Printer(tasks, coreCount, nodeCount, scenario));
+            //var status = solver.Solve(model);
 
-            if (status == CpSolverStatus.Optimal)
-            {
-                var output = string.Empty;
+            //if (status == CpSolverStatus.Optimal)
+            //{
+            //    var output = string.Empty;
                 
-                var assignedTasks = new List<List<AssignedTask>>();
+            //    var assignedTasks = new List<List<AssignedTask>>();
 
-                for (var core = 0; core < coreCount; core++)
-                {
-                    assignedTasks.Add(new List<AssignedTask>());
-                }
+            //    for (var core = 0; core < coreCount; core++)
+            //    {
+            //        assignedTasks.Add(new List<AssignedTask>());
+            //    }
 
-                for (var core = 0; core < coreCount; core++)
-                {
-                    for (var node = 0; node < nodeCount; node++)
-                    {
-                            assignedTasks[core].Add(new AssignedTask
-                            {
-                                Start = solver.Value(tasks[(core, node)].Start),
-                                Core = core,
-                                Index = scenario.Graph.Nodes[node].Name,
-                                Duration = scenario.Graph.Nodes[node].Wcet,
-                                IsActive = solver.Value(tasks[(core, node)].IsActive)
-                            });
-                    }
-                }
+            //    for (var core = 0; core < coreCount; core++)
+            //    {
+            //        for (var node = 0; node < nodeCount; node++)
+            //        {
+            //                assignedTasks[core].Add(new AssignedTask
+            //                {
+            //                    Start = solver.Value(tasks[(core, node)].Start),
+            //                    Core = core,
+            //                    Index = scenario.Graph.Nodes[node].Name,
+            //                    Duration = scenario.Graph.Nodes[node].Wcet,
+            //                    IsActive = solver.Value(tasks[(core, node)].IsActive)
+            //                });
+            //        }
+            //    }
 
-                for (var core = 0; core < coreCount; core++)
-                {
-                    assignedTasks[core] = assignedTasks[core].OrderBy(task => task.Start).ToList();
-                    var solutionLineTasks = $"Core {core}: ";
-                    var solutionLine = "        ";
+            //    for (var core = 0; core < coreCount; core++)
+            //    {
+            //        assignedTasks[core] = assignedTasks[core].OrderBy(task => task.Start).ToList();
+            //        var solutionLineTasks = $"Core {core}: ";
+            //        var solutionLine = "        ";
                     
-                    for (var task = 0; task < assignedTasks[core].Count; task++)
-                    {
-                        var assignedTask = assignedTasks[core][task];
-                        if (assignedTask.IsActive == 1)
-                        {
-                            var name = $"Node: {assignedTask.Index} ";
-                            solutionLineTasks += $"{name,-15}";
-                        }
+            //        for (var task = 0; task < assignedTasks[core].Count; task++)
+            //        {
+            //            var assignedTask = assignedTasks[core][task];
+            //            if (assignedTask.IsActive == 1)
+            //            {
+            //                var name = $"Node: {assignedTask.Index} ";
+            //                solutionLineTasks += $"{name,-15}";
+            //            }
                         
-                        var solutionTemp = string.Empty;
-                        var start = assignedTask.Start;
-                        var duration = assignedTask.Duration;
-                        if (assignedTask.IsActive == 1)
-                        {
-                            solutionTemp = $"[{start}, {start + duration}]";
-                            solutionLine += $"{solutionTemp,-15}";
-                        }
-                    }
+            //            var solutionTemp = string.Empty;
+            //            var start = assignedTask.Start;
+            //            var duration = assignedTask.Duration;
+            //            if (assignedTask.IsActive == 1)
+            //            {
+            //                solutionTemp = $"[{start}, {start + duration}]";
+            //                solutionLine += $"{solutionTemp,-15}";
+            //            }
+            //        }
 
-                    solutionLine += "\n";
-                    solutionLineTasks += "\n";
+            //        solutionLine += "\n";
+            //        solutionLineTasks += "\n";
 
-                    output += solutionLineTasks;
-                    output += solutionLine;
-                }
+            //        output += solutionLineTasks;
+            //        output += solutionLine;
+            //    }
 
-                Console.WriteLine($"Optimal Schedule Length: {solver.ObjectiveValue}");
-                Console.Write(output);
-            }
+            //    Console.WriteLine($"Optimal Schedule Length: {solver.ObjectiveValue}");
+            //    Console.Write(output);
+            //}
         }
 
         private static List<Cpu> InitializeCpus(XmlDocument parsedCpu)
