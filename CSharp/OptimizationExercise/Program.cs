@@ -45,7 +45,7 @@ namespace OptimizationExercise
 
             var ids = new List<List<IntVar>>();
 
-            for (int node = 0; node < nodeCount; node++)
+            for (var node = 0; node < nodeCount; node++)
             {
                 ids.Add(new List<IntVar>());
             }
@@ -68,7 +68,8 @@ namespace OptimizationExercise
                         Start = start,
                         End = end,
                         Interval = interval,
-                        IsActive = active
+                        IsActive = active,
+                        Id = scenario.Graph.Nodes[node].Id
                     };
                     
                     coreIntervals[core].Add(interval);
@@ -100,14 +101,13 @@ namespace OptimizationExercise
                 {
                     for (var node = 0; node < nodeCount; node++)
                     {
-                        if (scenario.Graph.Nodes[node].Name == edge.Source)
+                        if (scenario.Graph.Nodes[node].Name != edge.Source) continue;
+                        
+                        foreach (var (c, n) in tasks)
                         {
-                            foreach (var (c, n) in tasks)
+                            if (scenario.Graph.Nodes[c.Item2].Name == edge.Destination)
                             {
-                                if (scenario.Graph.Nodes[c.Item2].Name == edge.Destination)
-                                {
-                                    model.Add(n.Start >= tasks[(core, node)].End);
-                                }
+                                model.Add(n.Start >= tasks[(core, node)].End);
                             }
                         }
                     }
@@ -120,70 +120,118 @@ namespace OptimizationExercise
             model.Minimize(makespan);
 
             var solver = new CpSolver();
-            solver.SearchAllSolutions(model, new Printer(tasks, coreCount, nodeCount, scenario));
-            //var status = solver.Solve(model);
+            //solver.SearchAllSolutions(model, new Printer(tasks, coreCount, nodeCount, scenario));
+            var status = solver.Solve(model);
 
-            //if (status == CpSolverStatus.Optimal)
-            //{
-            //    var output = string.Empty;
+            if (status != CpSolverStatus.Optimal) return;
+            {
+                var output = string.Empty;
                 
-            //    var assignedTasks = new List<List<AssignedTask>>();
+                var assignedTasks = new List<List<AssignedTask>>();
 
-            //    for (var core = 0; core < coreCount; core++)
-            //    {
-            //        assignedTasks.Add(new List<AssignedTask>());
-            //    }
+                for (var core = 0; core < coreCount; core++)
+                {
+                    assignedTasks.Add(new List<AssignedTask>());
+                }
 
-            //    for (var core = 0; core < coreCount; core++)
-            //    {
-            //        for (var node = 0; node < nodeCount; node++)
-            //        {
-            //                assignedTasks[core].Add(new AssignedTask
-            //                {
-            //                    Start = solver.Value(tasks[(core, node)].Start),
-            //                    Core = core,
-            //                    Index = scenario.Graph.Nodes[node].Name,
-            //                    Duration = scenario.Graph.Nodes[node].Wcet,
-            //                    IsActive = solver.Value(tasks[(core, node)].IsActive)
-            //                });
-            //        }
-            //    }
+                for (var core = 0; core < coreCount; core++)
+                {
+                    for (var node = 0; node < nodeCount; node++)
+                    {
+                        assignedTasks[core].Add(new AssignedTask
+                        {
+                            Start = solver.Value(tasks[(core, node)].Start),
+                            Core = core,
+                            Index = scenario.Graph.Nodes[node].Name,
+                            Duration = scenario.Graph.Nodes[node].Wcet,
+                            IsActive = solver.Value(tasks[(core, node)].IsActive),
+                            Id = tasks[(core, node)].Id
+                        });
+                    }
+                }
 
-            //    for (var core = 0; core < coreCount; core++)
-            //    {
-            //        assignedTasks[core] = assignedTasks[core].OrderBy(task => task.Start).ToList();
-            //        var solutionLineTasks = $"Core {core}: ";
-            //        var solutionLine = "        ";
+                for (var core = 0; core < coreCount; core++)
+                {
+                    assignedTasks[core] = assignedTasks[core].OrderBy(task => task.Start).ToList();
+                    var solutionLineTasks = $"Core {core}: ";
+                    var solutionLine = "        ";
                     
-            //        for (var task = 0; task < assignedTasks[core].Count; task++)
-            //        {
-            //            var assignedTask = assignedTasks[core][task];
-            //            if (assignedTask.IsActive == 1)
-            //            {
-            //                var name = $"Node: {assignedTask.Index} ";
-            //                solutionLineTasks += $"{name,-15}";
-            //            }
+                    for (var task = 0; task < assignedTasks[core].Count; task++)
+                    {
+                        var assignedTask = assignedTasks[core][task];
+                        if (assignedTask.IsActive == 1)
+                        {
+                            var name = $"Node: {assignedTask.Index} ";
+                            solutionLineTasks += $"{name,-15}";
+                        }
                         
-            //            var solutionTemp = string.Empty;
-            //            var start = assignedTask.Start;
-            //            var duration = assignedTask.Duration;
-            //            if (assignedTask.IsActive == 1)
-            //            {
-            //                solutionTemp = $"[{start}, {start + duration}]";
-            //                solutionLine += $"{solutionTemp,-15}";
-            //            }
-            //        }
+                        var solutionTemp = string.Empty;
+                        var start = assignedTask.Start;
+                        var duration = assignedTask.Duration;
+                        
+                        if (assignedTask.IsActive != 1) continue;
+                        
+                        solutionTemp = $"[{start}, {start + duration}]";
+                        solutionLine += $"{solutionTemp,-15}";
+                    }
 
-            //        solutionLine += "\n";
-            //        solutionLineTasks += "\n";
+                    solutionLine += "\n";
+                    solutionLineTasks += "\n";
 
-            //        output += solutionLineTasks;
-            //        output += solutionLine;
-            //    }
+                    output += solutionLineTasks;
+                    output += solutionLine;
+                }
 
-            //    Console.WriteLine($"Optimal Schedule Length: {solver.ObjectiveValue}");
-            //    Console.Write(output);
-            //}
+                Console.WriteLine($"Optimal Schedule Length: {solver.ObjectiveValue}");
+                Console.Write(output);
+                
+                var solution = new XmlDocument();
+                var version = solution.CreateXmlDeclaration("1.0", null, null);
+                solution.AppendChild(version);
+                
+                var tables = solution.CreateElement("Tables");
+                solution.AppendChild(tables);
+
+                foreach (var cpu in scenario.Cpus)
+                {
+                    for (var core = 0; core < cpu.Cores.Count; core++)
+                    {
+                        var cpuId = solution.CreateAttribute("CpuId");
+                        cpuId.Value = cpu.Id;
+                        
+                        var schedule = solution.CreateElement("Schedule");
+                        var coreId = solution.CreateAttribute("CoreId");
+
+                        coreId.Value = cpu.Cores[core].Id;
+                        schedule.Attributes.Append(coreId);
+                        schedule.Attributes.Append(cpuId);
+
+                        tables.AppendChild(schedule);
+
+                        for (var node = 0; node < nodeCount; node++)
+                        {
+                            var task = assignedTasks[core][node];
+                            
+                            if (task.IsActive != 1) continue;
+                            
+                            var slice = solution.CreateElement("Slice");
+                            var start = solution.CreateAttribute("Start");
+                            var duration = solution.CreateAttribute("Duration");
+                            var taskId = solution.CreateAttribute("TaskId");
+
+                            start.Value = task.Start.ToString();
+                            duration.Value = task.Duration.ToString();
+                            taskId.Value = task.Id;
+                            slice.Attributes.Append(start);
+                            slice.Attributes.Append(duration);
+                            slice.Attributes.Append(taskId);
+
+                            schedule.AppendChild(slice);
+                        }
+                    }
+                }
+                solution.Save($"Case{CaseNumber}.xml");
+            }
         }
 
         private static List<Cpu> InitializeCpus(XmlDocument parsedCpu)

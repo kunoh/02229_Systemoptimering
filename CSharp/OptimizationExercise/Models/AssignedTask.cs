@@ -7,5 +7,6 @@
         public string Index { get; set; }
         public int Duration { get; set; }
         public long IsActive { get; set; }
+        public string Id { get; set; }
     }
 }
