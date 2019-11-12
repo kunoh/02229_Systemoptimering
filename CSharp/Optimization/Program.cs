@@ -28,8 +28,19 @@ namespace Optimization
             
             var taskCount = tasks.Count;
             var cpuCount = cpus.Count;
-            
-            var intervals = cpus.Select(cpu => new List<IntervalVar>()).ToList();
+
+            var intervals = new List<List<List<IntervalVar>>>();
+
+            for (var cpu = 0; cpu < cpuCount; cpu++) 
+            {
+                intervals.Add(new List<List<IntervalVar>>());
+                for (var core = 0; core < cpus[cpu].Cores.Count; core++)
+                {
+                    intervals[cpu].Add(new List<IntervalVar>());
+                }
+            }
+
+            var taskVars = new Dictionary<(int, int, int), TaskVar>();
 
             // -- ADD VARIABLES --
             for (var cpu = 0; cpu < cpuCount; cpu++)
@@ -38,7 +49,31 @@ namespace Optimization
                 {
                     for (var task = 0; task < taskCount; task++)
                     {
-                        AssignVariables(cpu, core, tasks[task], model, intervals);
+                        var taskNode = tasks[task];
+                        if (cpu == taskNode.CpuId)
+                        {
+                            if (core == taskNode.CoreId || taskNode.CoreId == -1)
+                            {
+
+                                var suffix = $"_{cpu}_{core}_{taskNode.Name}";
+
+                                var start = model.NewIntVar(taskNode.Offset, taskNode.Deadline, $"start{suffix}");
+                                var end = model.NewIntVar(taskNode.Offset, taskNode.Deadline, $"end{suffix}");
+                                var active = model.NewBoolVar($"{taskNode.Name}");
+
+                                var interval = model.NewOptionalIntervalVar(start, taskNode.Wcet, end, active, $"interval{suffix}");
+
+                                intervals[cpu][core].Add(interval);
+
+                                taskVars[(cpu, core, task)] = new TaskVar {
+                                    Start = start,
+                                    End = end,
+                                    Interval = interval,
+                                    IsActive = active
+                                };
+                            }
+                        }
+                            // AssignVariables(cpu, core, tasks[task], model, intervals);
                     }
                 }
             }
@@ -47,13 +82,27 @@ namespace Optimization
             // Ensure nothing is scheduled concurrently on the same core
             for (var cpu = 0; cpu < cpuCount; cpu++)
             {
-                model.AddNoOverlap(intervals[cpu]);
+                for (var core = 0; core < cpus[cpu].Cores.Count; core++)
+                {
+                    model.AddNoOverlap(intervals[cpu][core]);
+                }
             }
-            
-            // Ensure tasks are scheduled in the correct order according to the chains
-            
-            // Ensure tasks are scheduled on their specified core and cpu
-            
+
+            for (var task = 0; task < taskCount; task++)
+            {
+                var currentTask = tasks[task];
+                if (currentTask.CoreId == -1)
+                {
+                    var assigned = new List<IntVar>();
+                    for (var core = 0; core < cpus[currentTask.CpuId].Cores.Count; core++)
+                    {
+                        assigned.Add(taskVars[(currentTask.CpuId, core, task)].IsActive);
+                    }
+                    model.Add(LinearExpr.Sum(assigned) == 1);
+                }
+            } 
+
+               
             
             // -- ADD OBJECTIVE --
 
@@ -80,17 +129,9 @@ namespace Optimization
             _application = XmlParser.ParseApplication(applicationDoc);
         }
 
-        private static void AssignVariables(int cpu, int core, Task taskNode, CpModel model, List<List<IntervalVar>> intervals)
+        private static void AssignVariables(int cpu, int core, Task taskNode, CpModel model, List<List<List<IntervalVar>>> intervals)
         {
-            var suffix = $"_{cpu}_{core}_{taskNode.Name}";
             
-            var start = model.NewIntVar(taskNode.Offset, taskNode.Deadline, $"start{suffix}");
-            var end = model.NewIntVar(taskNode.Offset, taskNode.Deadline, $"end{suffix}");
-            var active = model.NewBoolVar($"{taskNode.Name}");
-            
-            var interval = model.NewOptionalIntervalVar(start, taskNode.Wcet, end, active, $"interval{suffix}");
-
-            intervals[cpu].Add(interval);
         }
     }
 }

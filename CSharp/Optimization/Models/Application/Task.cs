@@ -43,11 +43,11 @@ namespace Optimization.Models.Application
         /// <summary>
         /// Id of the assigned CPU. Must be assigned.
         /// </summary>
-        public string CpuId { get; set; }
+        public int CpuId { get; set; }
 
         /// <summary>
         /// Id of the assigned Core of the CPU; optional; -1 for no core assignment.
         /// </summary>
-        public string CoreId { get; set; }
+        public int CoreId { get; set; }
     }
 }

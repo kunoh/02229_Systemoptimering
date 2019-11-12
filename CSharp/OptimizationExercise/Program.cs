@@ -11,7 +11,7 @@ namespace OptimizationExercise
 {
     public static class Program
     {
-        private const string CaseNumber = "4";
+        private const string CaseNumber = "3";
         private static readonly string DirectoryName = $"..\\..\\..\\Cases\\Case {CaseNumber}\\";
         private static readonly string GraphFileName = $"{DirectoryName}Case{CaseNumber}.tsk";
         private static readonly string CpuFileName = $"{DirectoryName}Case{CaseNumber}.cfg";
