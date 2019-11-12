@@ -74,7 +74,6 @@ namespace Optimization
                                 };
                             }
                         }
-                            // AssignVariables(cpu, core, tasks[task], model, intervals);
                     }
                 }
             }
@@ -102,7 +101,6 @@ namespace Optimization
                     model.Add(LinearExpr.Sum(assigned) == 1);
                 }
             }
-
 
             // -- ADD OBJECTIVE --
             var makespan = model.NewIntVar(0, 80000, "makespan");
@@ -135,11 +133,6 @@ namespace Optimization
 
             _architecture = XmlParser.ParseArchitecture(architectureDoc);
             _application = XmlParser.ParseApplication(applicationDoc);
-        }
-
-        private static void AssignVariables(int cpu, int core, Task taskNode, CpModel model, List<List<List<IntervalVar>>> intervals)
-        {
-            
         }
     }
 }
