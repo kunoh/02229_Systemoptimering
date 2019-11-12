@@ -25,8 +25,8 @@ namespace Optimization
                 Deadline = GetIntValue("Deadline", task),
                 MaxJitter = GetIntValue("MaxJitter", task),
                 Offset = GetIntValue("Offset", task),
-                CpuId = GetValue("CpuId", task),
-                CoreId = GetValue("CpuId", task)
+                CpuId = GetIntValue("CpuId", task),
+                CoreId = GetIntValue("CoreId", task)
             }).ToList();
             
             var chains = (from XmlNode chain in document.GetElementsByTagName("Chain") 
