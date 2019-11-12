@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Xml;
@@ -100,16 +101,23 @@ namespace Optimization
                     }
                     model.Add(LinearExpr.Sum(assigned) == 1);
                 }
-            } 
+            }
 
-               
-            
+
             // -- ADD OBJECTIVE --
-
+            var makespan = model.NewIntVar(0, 80000, "makespan");
+            var endTimes = taskVars.Select(task => task.Value.End).ToList();
+            model.AddMaxEquality(makespan, endTimes);
+            model.Minimize(makespan);
 
             // -- SOLVE --
             var solver = new CpSolver();
-            solver.Solve(model);
+            var status = solver.Solve(model);
+
+            if (status == CpSolverStatus.Optimal || status == CpSolverStatus.Feasible)
+            {
+                Console.WriteLine("Solution found!!!"); 
+            }
 
             // -- PRINT SOLUTION --
         }
