@@ -32,6 +32,7 @@ namespace Optimization
 
             var intervals = new List<List<List<IntervalVar>>>();
 
+            // Initialize list of intervals on a per cpu per core basis
             for (var cpu = 0; cpu < cpuCount; cpu++) 
             {
                 intervals.Add(new List<List<IntervalVar>>());
@@ -48,32 +49,19 @@ namespace Optimization
             {
                 for (var core = 0; core < cpus[cpu].Cores.Count; core++)
                 {
+                    // TODO: Assign tasks to CPU, to avoid iterating all tasks for each cpu
                     for (var task = 0; task < taskCount; task++)
                     {
                         var taskNode = tasks[task];
-                        if (cpu == taskNode.CpuId)
-                        {
-                            if (core == taskNode.CoreId || taskNode.CoreId == -1)
-                            {
+                        
+                        // If current node is not assigned to the current CPU skip it.
+                        // If current node is not assigned to current core, and is not able to run on any core, skip
+                        if (cpu != taskNode.CpuId && core != taskNode.CoreId && taskNode.CoreId != -1) continue;
+                        
+                        var taskVar = AssignVariables(cpu, core, taskNode, model);
 
-                                var suffix = $"_{cpu}_{core}_{taskNode.Name}";
-
-                                var start = model.NewIntVar(taskNode.Offset, taskNode.Deadline, $"start{suffix}");
-                                var end = model.NewIntVar(taskNode.Offset, taskNode.Deadline, $"end{suffix}");
-                                var active = model.NewBoolVar($"{taskNode.Name}");
-
-                                var interval = model.NewOptionalIntervalVar(start, taskNode.Wcet, end, active, $"interval{suffix}");
-
-                                intervals[cpu][core].Add(interval);
-
-                                taskVars[(cpu, core, task)] = new TaskVar {
-                                    Start = start,
-                                    End = end,
-                                    Interval = interval,
-                                    IsActive = active
-                                };
-                            }
-                        }
+                        intervals[cpu][core].Add(taskVar.Interval);
+                        taskVars[(cpu, core, task)] = taskVar;
                     }
                 }
             }
@@ -88,18 +76,20 @@ namespace Optimization
                 }
             }
 
+            // If a task can run on any core, ensure it is only scheduled for one core
             for (var task = 0; task < taskCount; task++)
             {
                 var currentTask = tasks[task];
-                if (currentTask.CoreId == -1)
+                
+                // Skip tasks if it has a specific core assigned
+                if (currentTask.CoreId != -1) continue;
+                
+                var assigned = new List<IntVar>();
+                for (var core = 0; core < cpus[currentTask.CpuId].Cores.Count; core++)
                 {
-                    var assigned = new List<IntVar>();
-                    for (var core = 0; core < cpus[currentTask.CpuId].Cores.Count; core++)
-                    {
-                        assigned.Add(taskVars[(currentTask.CpuId, core, task)].IsActive);
-                    }
-                    model.Add(LinearExpr.Sum(assigned) == 1);
+                    assigned.Add(taskVars[(currentTask.CpuId, core, task)].IsActive);
                 }
+                model.Add(LinearExpr.Sum(assigned) == 1);
             }
 
             // -- ADD OBJECTIVE --
@@ -118,6 +108,24 @@ namespace Optimization
             }
 
             // -- PRINT SOLUTION --
+        }
+
+        private static TaskVar AssignVariables(int cpu, int core, Task taskNode, CpModel model)
+        {
+            var suffix = $"_{cpu}_{core}_{taskNode.Name}";
+
+            var start = model.NewIntVar(taskNode.Offset, taskNode.Deadline, $"start{suffix}");
+            var end = model.NewIntVar(taskNode.Offset, taskNode.Deadline, $"end{suffix}");
+            var isActive = model.NewBoolVar($"{taskNode.Name}");
+
+            var interval = model.NewOptionalIntervalVar(start, taskNode.Wcet, end, isActive, $"interval{suffix}");
+
+            return new TaskVar {
+                Start = start,
+                End = end,
+                Interval = interval,
+                IsActive = isActive
+            };
         }
 
         private static void ParseDocuments()
