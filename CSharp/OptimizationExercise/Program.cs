@@ -18,7 +18,7 @@ namespace OptimizationExercise
         
         private static int _horizon, _coreCount, _nodeCount;
 
-        public static void Main(string[] args)
+        public static void Main()
         {
             // -- CREATE THE MODEL --
             var model = new CpModel();
