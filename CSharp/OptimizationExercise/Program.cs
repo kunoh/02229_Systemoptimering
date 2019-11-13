@@ -11,10 +11,12 @@ namespace OptimizationExercise
 {
     public static class Program
     {
-        private const string CaseNumber = "3";
+        private const string CaseNumber = "1";
         private static readonly string DirectoryName = $"..\\..\\..\\Cases\\Case {CaseNumber}\\";
         private static readonly string GraphFileName = $"{DirectoryName}Case{CaseNumber}.tsk";
         private static readonly string CpuFileName = $"{DirectoryName}Case{CaseNumber}.cfg";
+        
+        private static int _horizon, _coreCount, _nodeCount;
 
         public static void Main(string[] args)
         {
@@ -31,62 +33,48 @@ namespace OptimizationExercise
                 Graph = new Graph(parsedGraph)
             };
 
-            var coreCount = scenario.Cpus.Sum(cpu => cpu.Cores.Count);
-            var nodeCount = scenario.Graph.Nodes.Count;
-            var horizon = scenario.Graph.Nodes.Sum(node => node.Wcet);
+            _coreCount = scenario.Cpus.Sum(cpu => cpu.Cores.Count);
+            _nodeCount = scenario.Graph.Nodes.Count;
+            
+            // Time to complete all tasks sequentially (Longest schedule)
+            _horizon = scenario.Graph.Nodes.Sum(node => node.Wcet);
 
+            // Initialize list to store intervals
             var coreIntervals = (
                 from cores in scenario.Cpus.Select(cpu => cpu.Cores) 
                 from core in cores 
                 select new List<IntervalVar>())
                 .ToList();
             
+            // Map of tasks with tuple of core and node id
             var tasks = new Dictionary<(int, int), Task>();
 
-            var ids = new List<List<IntVar>>();
-
-            for (var node = 0; node < nodeCount; node++)
+            for (var core = 0; core < _coreCount; core++)
             {
-                ids.Add(new List<IntVar>());
-            }
-
-            for (var core = 0; core < coreCount; core++)
-            {
-                for (var node = 0; node < nodeCount; node++)
+                for (var node = 0; node < _nodeCount; node++)
                 {
                     var nodeObject = scenario.Graph.Nodes[node];
+                    var task = CreateVariables(core, model, nodeObject);
                     
-                    var start = model.NewIntVar(0, horizon, $"start_{core}_{nodeObject.Name}");
-                    var end = model.NewIntVar(0, horizon, $"end_{core}_{nodeObject.Name}");
-                    var active = model.NewBoolVar($"{node}");
-                    var interval = model.NewOptionalIntervalVar(start, nodeObject.Wcet, end, active,$"interval_{core}_{nodeObject.Name}" );
+                    // Keep track of variables for each task
+                    tasks[(core, node)] = task;
                     
-                    
-                    
-                    tasks[(core, node)] = new Task
-                    {
-                        Start = start,
-                        End = end,
-                        Interval = interval,
-                        IsActive = active,
-                        Id = scenario.Graph.Nodes[node].Id
-                    };
-                    
-                    coreIntervals[core].Add(interval);
+                    // Keep track of each interval on a per core basis
+                    coreIntervals[core].Add(task.Interval);
                 }
             }
 
             // Ensure nodes don't overlap
-            for (var core = 0; core < coreCount; core++)
+            for (var core = 0; core < _coreCount; core++)
             {
                 model.AddNoOverlap(coreIntervals[core]);
             }
 
-            for (var node = 0; node < nodeCount; node++)
+            // Ensure a task is only planned once
+            for (var node = 0; node < _nodeCount; node++)
             {
-                //model.Add(LinearExpr.Sum(tasks.Where(task => task.Key.Item2 == node).Select(task => task.Value.IsActive)) == 1);
                 var assigned = new List<IntVar>();
-                for (var core = 0; core < coreCount; core++)
+                for (var core = 0; core < _coreCount; core++)
                 {
                     assigned.Add(tasks[(core, node)].IsActive);
                 }
@@ -94,12 +82,14 @@ namespace OptimizationExercise
                 model.Add(LinearExpr.Sum(assigned) == 1);
             }
 
-            // Ensure that a node isn't scheduled until after its predecessor has finished
+            // Ensure that a node isn't scheduled until after its predecessor has finished.
+            // Iterates over each task graph and ensures that for each node
+            // any destinations are only planned for once the current node has finished.
             foreach (var edge in scenario.Graph.TaskGraphs.SelectMany(taskGraph => taskGraph.Edges))
             {
-                for (var core = 0; core < coreCount; core++)
+                for (var core = 0; core < _coreCount; core++)
                 {
-                    for (var node = 0; node < nodeCount; node++)
+                    for (var node = 0; node < _nodeCount; node++)
                     {
                         if (scenario.Graph.Nodes[node].Name != edge.Source) continue;
                         
@@ -114,7 +104,7 @@ namespace OptimizationExercise
                 }
             }
 
-            var makespan = model.NewIntVar(0, horizon, "makespan");
+            var makespan = model.NewIntVar(0, _horizon, "makespan");
             var endTimes = tasks.Select(task => task.Value.End).ToList();
             model.AddMaxEquality(makespan, endTimes);
             model.Minimize(makespan);
@@ -129,14 +119,14 @@ namespace OptimizationExercise
                 
                 var assignedTasks = new List<List<AssignedTask>>();
 
-                for (var core = 0; core < coreCount; core++)
+                for (var core = 0; core < _coreCount; core++)
                 {
                     assignedTasks.Add(new List<AssignedTask>());
                 }
 
-                for (var core = 0; core < coreCount; core++)
+                for (var core = 0; core < _coreCount; core++)
                 {
-                    for (var node = 0; node < nodeCount; node++)
+                    for (var node = 0; node < _nodeCount; node++)
                     {
                         assignedTasks[core].Add(new AssignedTask
                         {
@@ -150,88 +140,97 @@ namespace OptimizationExercise
                     }
                 }
 
-                for (var core = 0; core < coreCount; core++)
+                for (var core = 0; core < _coreCount; core++)
                 {
                     assignedTasks[core] = assignedTasks[core].OrderBy(task => task.Start).ToList();
-                    var solutionLineTasks = $"Core {core}: ";
-                    var solutionLine = "        ";
-                    
-                    for (var task = 0; task < assignedTasks[core].Count; task++)
-                    {
-                        var assignedTask = assignedTasks[core][task];
-                        if (assignedTask.IsActive == 1)
-                        {
-                            var name = $"Node: {assignedTask.Index} ";
-                            solutionLineTasks += $"{name,-15}";
-                        }
-                        
-                        var solutionTemp = string.Empty;
-                        var start = assignedTask.Start;
-                        var duration = assignedTask.Duration;
-                        
-                        if (assignedTask.IsActive != 1) continue;
-                        
-                        solutionTemp = $"[{start}, {start + duration}]";
-                        solutionLine += $"{solutionTemp,-15}";
-                    }
-
-                    solutionLine += "\n";
-                    solutionLineTasks += "\n";
-
-                    output += solutionLineTasks;
-                    output += solutionLine;
                 }
 
                 Console.WriteLine($"Optimal Schedule Length: {solver.ObjectiveValue}");
                 Console.Write(output);
                 
-                var solution = new XmlDocument();
-                var version = solution.CreateXmlDeclaration("1.0", null, null);
-                solution.AppendChild(version);
-                
-                var tables = solution.CreateElement("Tables");
-                solution.AppendChild(tables);
+                SaveSolution(scenario, assignedTasks);
+            }
+        }
 
-                foreach (var cpu in scenario.Cpus)
+        /// <summary>
+        /// Creates a <see cref="Task"/> based on the given input
+        /// </summary>
+        /// <param name="core">Index of the core the variables are created for</param>
+        /// <param name="model">The model to which the variables are added</param>
+        /// <param name="nodeObject">Node object containing information about the node</param>
+        /// <returns>A <see cref="Task"/> object</returns>
+        private static Task CreateVariables(int core, CpModel model, Node nodeObject)
+        {
+            var start = model.NewIntVar(0, _horizon, $"start_{core}_{nodeObject.Name}");
+            var end = model.NewIntVar(0, _horizon, $"end_{core}_{nodeObject.Name}");
+            var active = model.NewBoolVar($"{nodeObject.Name}");
+            var interval = model.NewOptionalIntervalVar(
+                start, nodeObject.Wcet, end, active, $"interval_{core}_{nodeObject.Name}");
+
+            return new Task
+            {
+                Start = start,
+                End = end,
+                Interval = interval,
+                IsActive = active,
+                Id = nodeObject.Id
+            };
+        }
+
+        /// <summary>
+        /// Saves a solution as an xml file
+        /// </summary>
+        /// <param name="scenario">Contains all information about the current problem</param>
+        /// <param name="assignedTasks">List containing all assigned tasks sorted by start time</param>
+        private static void SaveSolution(Scenario scenario, List<List<AssignedTask>> assignedTasks)
+        {
+            var solution = new XmlDocument();
+            var version = solution.CreateXmlDeclaration("1.0", null, null);
+            solution.AppendChild(version);
+
+            var tables = solution.CreateElement("Tables");
+            solution.AppendChild(tables);
+
+            foreach (var cpu in scenario.Cpus)
+            {
+                for (var core = 0; core < cpu.Cores.Count; core++)
                 {
-                    for (var core = 0; core < cpu.Cores.Count; core++)
+                    var cpuId = solution.CreateAttribute("CpuId");
+                    cpuId.Value = cpu.Id;
+
+                    var schedule = solution.CreateElement("Schedule");
+                    var coreId = solution.CreateAttribute("CoreId");
+
+                    coreId.Value = cpu.Cores[core].Id;
+                    schedule.Attributes.Append(coreId);
+                    schedule.Attributes.Append(cpuId);
+
+                    tables.AppendChild(schedule);
+
+                    for (var node = 0; node < _nodeCount; node++)
                     {
-                        var cpuId = solution.CreateAttribute("CpuId");
-                        cpuId.Value = cpu.Id;
-                        
-                        var schedule = solution.CreateElement("Schedule");
-                        var coreId = solution.CreateAttribute("CoreId");
+                        var task = assignedTasks[core][node];
 
-                        coreId.Value = cpu.Cores[core].Id;
-                        schedule.Attributes.Append(coreId);
-                        schedule.Attributes.Append(cpuId);
+                        if (task.IsActive != 1) continue;
 
-                        tables.AppendChild(schedule);
+                        var slice = solution.CreateElement("Slice");
+                        var start = solution.CreateAttribute("Start");
+                        var duration = solution.CreateAttribute("Duration");
+                        var taskId = solution.CreateAttribute("TaskId");
 
-                        for (var node = 0; node < nodeCount; node++)
-                        {
-                            var task = assignedTasks[core][node];
-                            
-                            if (task.IsActive != 1) continue;
-                            
-                            var slice = solution.CreateElement("Slice");
-                            var start = solution.CreateAttribute("Start");
-                            var duration = solution.CreateAttribute("Duration");
-                            var taskId = solution.CreateAttribute("TaskId");
+                        start.Value = task.Start.ToString();
+                        duration.Value = task.Duration.ToString();
+                        taskId.Value = task.Id;
+                        slice.Attributes.Append(start);
+                        slice.Attributes.Append(duration);
+                        slice.Attributes.Append(taskId);
 
-                            start.Value = task.Start.ToString();
-                            duration.Value = task.Duration.ToString();
-                            taskId.Value = task.Id;
-                            slice.Attributes.Append(start);
-                            slice.Attributes.Append(duration);
-                            slice.Attributes.Append(taskId);
-
-                            schedule.AppendChild(slice);
-                        }
+                        schedule.AppendChild(slice);
                     }
                 }
-                solution.Save($"Case{CaseNumber}.xml");
             }
+
+            solution.Save($"Case{CaseNumber}.xml");
         }
 
         private static List<Cpu> InitializeCpus(XmlDocument parsedCpu)
