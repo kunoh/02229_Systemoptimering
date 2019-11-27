@@ -32,10 +32,10 @@ namespace Optimization
                     {
                         Cpu = task.Key.Item1.ToString(),
                         Core = task.Key.Item2.ToString(),
-                        Index = task.Key.Item3,
-                        Count = task.Key.Item4,
                         Start = Value(task.Value.Start),
-                        End = Value(task.Value.End)
+                        End = Value(task.Value.End),
+                        Suffix = task.Value.Suffix
+
                     });
                 }
             }
@@ -49,7 +49,7 @@ namespace Optimization
 
                     foreach (var task in assignedTasks.Where(t => t.Cpu.Equals(cpu.Id) && t.Core.Equals(core.Id)).OrderBy(s => s.Start))
                     {
-                        output += $"{task.Index}{task.Count}[{task.Start} - {task.End}] ";
+                        output += $"{task.Suffix}[{task.Start} - {task.End}] ";
                     }
 
                     output += "\n";

@@ -11,5 +11,6 @@ namespace Optimization
         public IntVar End { get; set; }
         public IntervalVar Interval { get; set; }
         public IntVar IsActive { get; set; }
+        public string Suffix { get; set; }
     }
 }

@@ -169,6 +169,7 @@ namespace Optimization
             if (status == CpSolverStatus.Optimal || status == CpSolverStatus.Feasible)
             {
                 Console.WriteLine("Solution found!!!");
+                
             }
 
             // -- PRINT SOLUTION --
@@ -188,7 +189,8 @@ namespace Optimization
                 Start = start,
                 End = end,
                 Interval = interval,
-                IsActive = isActive
+                IsActive = isActive,
+                Suffix = suffix
             };
         }
 
