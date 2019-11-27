@@ -50,23 +50,23 @@ namespace Optimization
             for (var task = 0; task < taskCount; task++)
             {
                 var taskNode = tasks[task];
-                var tempCount = _application.Chains.Sum(t1 => t1.Runnables.Count(t => taskNode.Name.Equals(t)));
+                var tempCount = 0;
 
                 for (var chain = 0; chain < _application.Chains.Count; chain++)
                 {
                     tempCount = _application.Chains[chain].Runnables.Count(t => taskNode.Name.Equals(t));
-                }
-
-                if (chainTaskCount.TryGetValue(taskNode.Id, out var value))
-                {
-                    if (value < tempCount)
+                        
+                    if (chainTaskCount.TryGetValue(taskNode.Id, out var value))
                     {
-                        chainTaskCount[taskNode.Id] = tempCount;
+                        if (value < tempCount)
+                        {
+                            chainTaskCount[taskNode.Id] = tempCount;
+                        }
                     }
-                }
-                else if(tempCount != 0)
-                {
-                    chainTaskCount.Add(taskNode.Id, tempCount);
+                    else if(tempCount != 0)
+                    {
+                        chainTaskCount.Add(taskNode.Id, tempCount);
+                    }
                 }
             }
 
@@ -134,9 +134,9 @@ namespace Optimization
             for (var task = 0; task < taskCount; task++)
             {
                 var currentTask = tasks[task];
-                if (periods.TryGetValue(currentTask.Id, out var uniqueTasks))
+                if (chainTaskCount.TryGetValue(currentTask.Id, out var uniqueTasks))
                 {
-                    for (var count = 0; count < uniqueTasks.Count; count++)
+                    for (var count = 0; count < uniqueTasks; count++)
                     {
                         // Skip tasks if it has a specific core assigned
                         if (currentTask.CoreId != -1) continue;
@@ -164,11 +164,11 @@ namespace Optimization
             // -- SOLVE --
             var solver = new CpSolver();
             var status = solver.Solve(model);
-
+            solver.SearchAllSolutions(model, new SolutionPrinter(taskVars, cpus));
+            
             if (status == CpSolverStatus.Optimal || status == CpSolverStatus.Feasible)
             {
                 Console.WriteLine("Solution found!!!");
-                solver.SearchAllSolutions(model, new SolutionPrinter(taskVars, cpus));
             }
 
             // -- PRINT SOLUTION --
