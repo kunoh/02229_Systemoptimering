@@ -164,11 +164,11 @@ namespace Optimization
             // -- SOLVE --
             var solver = new CpSolver();
             var status = solver.Solve(model);
-
+            solver.SearchAllSolutions(model, new SolutionPrinter(taskVars, cpus));
             if (status == CpSolverStatus.Optimal || status == CpSolverStatus.Feasible)
             {
                 Console.WriteLine("Solution found!!!");
-                solver.SearchAllSolutions(model, new SolutionPrinter(taskVars, cpus));
+                
             }
 
             // -- PRINT SOLUTION --
@@ -188,7 +188,8 @@ namespace Optimization
                 Start = start,
                 End = end,
                 Interval = interval,
-                IsActive = isActive
+                IsActive = isActive,
+                Suffix = suffix
             };
         }
 

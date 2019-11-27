@@ -10,7 +10,6 @@ namespace Optimization.Models
         public long End { get; set; }
         public string Cpu { get; set; }
         public string Core { get; set; }
-        public int Index { get; set; }
-        public int Count { get; set; }
+        public string Suffix { get; set; }
     }
 }
