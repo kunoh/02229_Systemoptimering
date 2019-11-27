@@ -31,7 +31,7 @@ namespace Optimization
             var cpuCount = cpus.Count;
 
             var intervals = new List<List<List<IntervalVar>>>();
-            var periods = new Dictionary<string, List<TaskVar>>();
+            var periods = new Dictionary<(int core, string Id), List<TaskVar>>();
 
             // Initialize list of intervals on a per cpu per core basis
             for (var cpu = 0; cpu < cpuCount; cpu++) 
@@ -87,11 +87,11 @@ namespace Optimization
                         // If current task does not appear in any chain, skip it.
                         if (!chainTaskCount.TryGetValue(taskNode.Id, out var amount)) continue;
                         
-                        periods[taskNode.Id] = new List<TaskVar>();
+                        periods[(core, taskNode.Id)] = new List<TaskVar>();
                         for (var count = 0; count < amount; count++)
                         {
                             var taskVar = AssignVariables(cpu, core, taskNode, model, count);
-                            periods[taskNode.Id].Add(taskVar);
+                            periods[(core, taskNode.Id)].Add(taskVar);
                             intervals[cpu][core].Add(taskVar.Interval);
                             taskVars[(cpu, core, task, count)] = taskVar;
                         }
@@ -100,20 +100,20 @@ namespace Optimization
             }
 
             // Add a period as an interval, to ensure a task is not planned until its period has passed
-            foreach (var (key, value) in periods)
-            {
-                var count = value.Count;
-                for (var interval = 0; interval < count - 1; interval++)
-                {
-                    value.Add(new TaskVar
-                    {
-                        Interval = model.NewIntervalVar(
-                            value[interval].End,
-                            tasks.FirstOrDefault(t => t.Id == key).Period,
-                            value[interval + 1].Start, "")
-                    });
-                }
-            }
+//            foreach (var (key, value) in periods)
+//            {
+//                var count = value.Count;
+//                for (var interval = 0; interval < count - 1; interval++)
+//                {
+//                    value.Add(new TaskVar
+//                    {
+//                        Interval = model.NewIntervalVar(
+//                            value[interval].End,
+//                            tasks.FirstOrDefault(t => t.Id == key).Period,
+//                            value[interval + 1].Start, "")
+//                    });
+//                }
+//            }
 
             // -- ADD CONSTRAINTS --
             // Ensure nothing is scheduled concurrently on the same core
@@ -125,9 +125,17 @@ namespace Optimization
                 }
             }
 
-            foreach (var (_, value) in periods)
+            foreach (var ((_, id), value) in periods)
             {
-                model.AddNoOverlap(value.Select(t => t.Interval).ToList());
+                for (var task = 0; task < value.Count - 1; task++)
+                {
+                    var taskIntervals = periods.Where(tI => tI.Key.Id == id).Select(tI => tI.Value).ToList();
+
+                    foreach (var taskInterval in taskIntervals)
+                    {
+                        model.Add(taskInterval[task + 1].Start >= (value[task].End + tasks.FirstOrDefault(t => t.Id == id).Period));
+                    }
+                }
             }
 
             // If a task can run on any core, ensure it is only scheduled for one core
@@ -156,7 +164,7 @@ namespace Optimization
             }
 
             // -- ADD OBJECTIVE --
-            var makespan = model.NewIntVar(0, 9999999, "makespan");
+            var makespan = model.NewIntVar(0, 99999999, "makespan");
             var endTimes = taskVars.Select(task => task.Value.End).ToList();
             model.AddMaxEquality(makespan, endTimes);
             model.Minimize(makespan);
