@@ -43,7 +43,7 @@ namespace Optimization
                 }
             }
 
-            var taskVars = new Dictionary<(int, int, int), TaskVar>();
+            var taskVars = new Dictionary<(int, int, int, int), TaskVar>();
             
             var chainTaskCount = new Dictionary<string, int>();
 
@@ -83,19 +83,23 @@ namespace Optimization
                         // If current node is not assigned to the current CPU skip it.
                         // If current node is not assigned to current core, and is not able to run on any core, skip
                         if (cpu != taskNode.CpuId && core != taskNode.CoreId && taskNode.CoreId != -1) continue;
+                        
+                        // If current task does not appear in any chain, skip it.
                         if (!chainTaskCount.TryGetValue(taskNode.Id, out var amount)) continue;
+                        
                         periods[taskNode.Id] = new List<TaskVar>();
                         for (var count = 0; count < amount; count++)
                         {
                             var taskVar = AssignVariables(cpu, core, taskNode, model, count);
                             periods[taskNode.Id].Add(taskVar);
                             intervals[cpu][core].Add(taskVar.Interval);
-                            taskVars[(cpu, core, task)] = taskVar;
+                            taskVars[(cpu, core, task, count)] = taskVar;
                         }
                     }
                 }
             }
 
+            // Add a period as an interval, to ensure a task is not planned until its period has passed
             foreach (var (key, value) in periods)
             {
                 var count = value.Count;
@@ -130,16 +134,25 @@ namespace Optimization
             for (var task = 0; task < taskCount; task++)
             {
                 var currentTask = tasks[task];
-                
-                // Skip tasks if it has a specific core assigned
-                if (currentTask.CoreId != -1) continue;
-                
-                var assigned = new List<IntVar>();
-                for (var core = 0; core < cpus[currentTask.CpuId].Cores.Count; core++)
+                if (periods.TryGetValue(currentTask.Id, out var uniqueTasks))
                 {
-                    assigned.Add(taskVars[(currentTask.CpuId, core, task)].IsActive);
+                    for (var count = 0; count < uniqueTasks.Count; count++)
+                    {
+                        // Skip tasks if it has a specific core assigned
+                        if (currentTask.CoreId != -1) continue;
+
+                        var assigned = new List<IntVar>();
+                        for (var core = 0; core < cpus[currentTask.CpuId].Cores.Count; core++)
+                        {
+                            if (taskVars.TryGetValue((currentTask.CpuId, core, task, count), out var assignTask))
+                            {
+                                assigned.Add(assignTask.IsActive);
+                            }
+                        }
+
+                        model.Add(LinearExpr.Sum(assigned) == 1);
+                    }
                 }
-                model.Add(LinearExpr.Sum(assigned) == 1);
             }
 
             // -- ADD OBJECTIVE --
