@@ -82,7 +82,7 @@ namespace Optimization
                         
                         // If current node is not assigned to the current CPU skip it.
                         // If current node is not assigned to current core, and is not able to run on any core, skip
-                        if (cpu != taskNode.CpuId && core != taskNode.CoreId && taskNode.CoreId != -1) continue;
+                        if (cpu != taskNode.CpuId && (core != taskNode.CoreId || taskNode.CoreId != -1)) continue;
                         
                         // If current task does not appear in any chain, skip it.
                         if (!chainTaskCount.TryGetValue(taskNode.Id, out var amount)) continue;
