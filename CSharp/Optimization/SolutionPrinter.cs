@@ -24,17 +24,17 @@ namespace Optimization
             string output = "";
             var assignedTasks = new List<AssignedTask>();
 
-            foreach (var task in taskVarDict)
+            foreach (var ((cpu, core, _, _), task) in taskVarDict)
             {
-                if (Value(task.Value.IsActive) == 1)
+                if (Value(task.IsActive) == 1)
                 {
                     assignedTasks.Add(new AssignedTask
                     {
-                        Cpu = task.Key.Item1.ToString(),
-                        Core = task.Key.Item2.ToString(),
-                        Start = Value(task.Value.Start),
-                        End = Value(task.Value.End),
-                        Suffix = task.Value.Suffix
+                        Cpu = cpu.ToString(),
+                        Core = core.ToString(),
+                        Start = Value(task.Start),
+                        End = Value(task.End),
+                        Suffix = task.Suffix
 
                     });
                 }
