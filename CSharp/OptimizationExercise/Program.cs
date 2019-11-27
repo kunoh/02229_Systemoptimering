@@ -11,7 +11,7 @@ namespace OptimizationExercise
 {
     public static class Program
     {
-        private const string CaseNumber = "1";
+        private const string CaseNumber = "3";
         private static readonly string DirectoryName = $"..\\..\\..\\Cases\\Case {CaseNumber}\\";
         private static readonly string GraphFileName = $"{DirectoryName}Case{CaseNumber}.tsk";
         private static readonly string CpuFileName = $"{DirectoryName}Case{CaseNumber}.cfg";
@@ -49,6 +49,7 @@ namespace OptimizationExercise
             // Map of tasks with tuple of core and node id
             var tasks = new Dictionary<(int, int), Task>();
 
+            // Loop to create the variables
             for (var core = 0; core < _coreCount; core++)
             {
                 for (var node = 0; node < _nodeCount; node++)
@@ -109,8 +110,8 @@ namespace OptimizationExercise
             model.AddMaxEquality(makespan, endTimes);
             model.Minimize(makespan);
 
-            var solver = new CpSolver();
-            //solver.SearchAllSolutions(model, new Printer(tasks, coreCount, nodeCount, scenario));
+            var solver = new CpSolver(); 
+            solver.SearchAllSolutions(model, new Printer(tasks, _coreCount, _nodeCount, scenario));
             var status = solver.Solve(model);
 
             if (status != CpSolverStatus.Optimal) return;
@@ -161,8 +162,8 @@ namespace OptimizationExercise
         /// <returns>A <see cref="Task"/> object</returns>
         private static Task CreateVariables(int core, CpModel model, Node nodeObject)
         {
-            var start = model.NewIntVar(0, _horizon, $"start_{core}_{nodeObject.Name}");
-            var end = model.NewIntVar(0, _horizon, $"end_{core}_{nodeObject.Name}");
+            var start = model.NewIntVar(0, nodeObject.Deadline, $"start_{core}_{nodeObject.Name}");
+            var end = model.NewIntVar(0, nodeObject.Deadline, $"end_{core}_{nodeObject.Name}");
             var active = model.NewBoolVar($"{nodeObject.Name}");
             var interval = model.NewOptionalIntervalVar(
                 start, nodeObject.Wcet, end, active, $"interval_{core}_{nodeObject.Name}");
