@@ -26,7 +26,7 @@ namespace Optimization
 
             foreach (var task in taskVarDict)
             {
-                if (task.Value.IsActive == 1)
+                if (Value(task.Value.IsActive) == 1)
                 {
                     assignedTasks.Add(new AssignedTask
                     {
@@ -47,13 +47,15 @@ namespace Optimization
                 {
                     output += $"Core {core.Id}: ";
 
-                    foreach (var task in assignedTasks.Where(t => t.Cpu.Equals(cpu) && t.Core.Equals(core)).OrderBy(s => s.Start))
+                    foreach (var task in assignedTasks.Where(t => t.Cpu.Equals(cpu.Id) && t.Core.Equals(core.Id)).OrderBy(s => s.Start))
                     {
                         output += $"{task.Index}{task.Count}[{task.Start} - {task.End}] ";
                     }
 
                     output += "\n";
                 }
+
+                output += "\n";
             }
 
             Console.WriteLine(output);

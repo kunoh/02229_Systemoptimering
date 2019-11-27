@@ -167,7 +167,8 @@ namespace Optimization
 
             if (status == CpSolverStatus.Optimal || status == CpSolverStatus.Feasible)
             {
-                Console.WriteLine("Solution found!!!"); 
+                Console.WriteLine("Solution found!!!");
+                solver.SearchAllSolutions(model, new SolutionPrinter(taskVars, cpus));
             }
 
             // -- PRINT SOLUTION --
