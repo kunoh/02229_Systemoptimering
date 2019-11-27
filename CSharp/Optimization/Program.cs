@@ -31,6 +31,7 @@ namespace Optimization
             var cpuCount = cpus.Count;
 
             var intervals = new List<List<List<IntervalVar>>>();
+            var periods = new Dictionary<string, List<TaskVar>>();
 
             // Initialize list of intervals on a per cpu per core basis
             for (var cpu = 0; cpu < cpuCount; cpu++) 
@@ -43,6 +44,31 @@ namespace Optimization
             }
 
             var taskVars = new Dictionary<(int, int, int), TaskVar>();
+            
+            var chainTaskCount = new Dictionary<string, int>();
+
+            for (var task = 0; task < taskCount; task++)
+            {
+                var taskNode = tasks[task];
+                var tempCount = _application.Chains.Sum(t1 => t1.Runnables.Count(t => taskNode.Name.Equals(t)));
+
+                for (var chain = 0; chain < _application.Chains.Count; chain++)
+                {
+                    tempCount = _application.Chains[chain].Runnables.Count(t => taskNode.Name.Equals(t));
+                }
+
+                if (chainTaskCount.TryGetValue(taskNode.Id, out var value))
+                {
+                    if (value < tempCount)
+                    {
+                        chainTaskCount[taskNode.Id] = tempCount;
+                    }
+                }
+                else if(tempCount != 0)
+                {
+                    chainTaskCount.Add(taskNode.Id, tempCount);
+                }
+            }
 
             // -- ADD VARIABLES --
             for (var cpu = 0; cpu < cpuCount; cpu++)
@@ -57,12 +83,31 @@ namespace Optimization
                         // If current node is not assigned to the current CPU skip it.
                         // If current node is not assigned to current core, and is not able to run on any core, skip
                         if (cpu != taskNode.CpuId && core != taskNode.CoreId && taskNode.CoreId != -1) continue;
-                        
-                        var taskVar = AssignVariables(cpu, core, taskNode, model);
-
-                        intervals[cpu][core].Add(taskVar.Interval);
-                        taskVars[(cpu, core, task)] = taskVar;
+                        if (!chainTaskCount.TryGetValue(taskNode.Id, out var amount)) continue;
+                        periods[taskNode.Id] = new List<TaskVar>();
+                        for (var count = 0; count < amount; count++)
+                        {
+                            var taskVar = AssignVariables(cpu, core, taskNode, model, count);
+                            periods[taskNode.Id].Add(taskVar);
+                            intervals[cpu][core].Add(taskVar.Interval);
+                            taskVars[(cpu, core, task)] = taskVar;
+                        }
                     }
+                }
+            }
+
+            foreach (var (key, value) in periods)
+            {
+                var count = value.Count;
+                for (var interval = 0; interval < count - 1; interval++)
+                {
+                    value.Add(new TaskVar
+                    {
+                        Interval = model.NewIntervalVar(
+                            value[interval].End,
+                            tasks.FirstOrDefault(t => t.Id == key).Period,
+                            value[interval + 1].Start, "")
+                    });
                 }
             }
 
@@ -74,6 +119,11 @@ namespace Optimization
                 {
                     model.AddNoOverlap(intervals[cpu][core]);
                 }
+            }
+
+            foreach (var (_, value) in periods)
+            {
+                model.AddNoOverlap(value.Select(t => t.Interval).ToList());
             }
 
             // If a task can run on any core, ensure it is only scheduled for one core
@@ -93,7 +143,7 @@ namespace Optimization
             }
 
             // -- ADD OBJECTIVE --
-            var makespan = model.NewIntVar(0, 80000, "makespan");
+            var makespan = model.NewIntVar(0, 9999999, "makespan");
             var endTimes = taskVars.Select(task => task.Value.End).ToList();
             model.AddMaxEquality(makespan, endTimes);
             model.Minimize(makespan);
@@ -110,9 +160,9 @@ namespace Optimization
             // -- PRINT SOLUTION --
         }
 
-        private static TaskVar AssignVariables(int cpu, int core, Task taskNode, CpModel model)
+        private static TaskVar AssignVariables(int cpu, int core, Task taskNode, CpModel model, int count)
         {
-            var suffix = $"_{cpu}_{core}_{taskNode.Name}";
+            var suffix = $"_{count}_{cpu}_{core}_{taskNode.Name}";
 
             var start = model.NewIntVar(taskNode.Offset, taskNode.Deadline, $"start{suffix}");
             var end = model.NewIntVar(taskNode.Offset, taskNode.Deadline, $"end{suffix}");
