@@ -81,8 +81,10 @@ namespace Optimization
                         var taskNode = tasks[task];
                         
                         // If current node is not assigned to the current CPU skip it.
+                        if (cpu != taskNode.CpuId) continue;
+                        
                         // If current node is not assigned to current core, and is not able to run on any core, skip
-                        if (cpu != taskNode.CpuId && (core != taskNode.CoreId || taskNode.CoreId != -1)) continue;
+                        if (core != taskNode.CoreId && taskNode.CoreId != -1) continue;
                         
                         // If current task does not appear in any chain, skip it.
                         if (!chainTaskCount.TryGetValue(taskNode.Id, out var amount)) continue;
@@ -109,7 +111,7 @@ namespace Optimization
 //                    {
 //                        Interval = model.NewIntervalVar(
 //                            value[interval].End,
-//                            tasks.FirstOrDefault(t => t.Id == key).Period,
+//                            tasks.FirstOrDefault(t => t.Id == key.Id).Period,
 //                            value[interval + 1].Start, "")
 //                    });
 //                }
@@ -133,7 +135,7 @@ namespace Optimization
 
                     foreach (var taskInterval in taskIntervals)
                     {
-                        model.Add(taskInterval[task + 1].Start >= (value[task].End + tasks.FirstOrDefault(t => t.Id == id).Period));
+                        model.Add(taskInterval[task + 1].Start - value[task].End >= tasks.FirstOrDefault(t => t.Id == id).Period);
                     }
                 }
             }
@@ -164,7 +166,7 @@ namespace Optimization
             }
 
             // -- ADD OBJECTIVE --
-            var makespan = model.NewIntVar(0, 99999999, "makespan");
+            var makespan = model.NewIntVar(0, 9999999999, "makespan");
             var endTimes = taskVars.Select(task => task.Value.End).ToList();
             model.AddMaxEquality(makespan, endTimes);
             model.Minimize(makespan);
