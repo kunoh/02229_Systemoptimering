@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Xml;
 using Google.OrTools.Sat;
+using Optimization.Models;
 using Optimization.Models.Application;
 using Optimization.Models.Architecture;
 
@@ -179,10 +180,50 @@ namespace Optimization
             if (status == CpSolverStatus.Optimal || status == CpSolverStatus.Feasible)
             {
                 Console.WriteLine("Solution found!!!");
-                
+                SaveSolution(taskVars, solver);
             }
 
             // -- PRINT SOLUTION --
+        }
+
+        /// <summary>
+        /// Saves a solution as an xml file
+        /// </summary>
+        /// <param name="taskVars"></param>
+        /// <param name="solver"></param>
+        /// <param name="scenario">Contains all information about the current problem</param>
+        /// <param name="assignedTasks">List containing all assigned tasks sorted by start time</param>
+        private static void SaveSolution(Dictionary<(int, int, int, int), TaskVar> taskVars, CpSolver solver)
+        {
+            var assignedTasks = new List<AssignedTask>();
+
+            foreach (var ((cpu, core, _, _), task) in taskVars)
+            {
+                if (solver.Value(task.IsActive) == 1)
+                {
+                    assignedTasks.Add(new AssignedTask
+                    {
+                        Cpu = cpu.ToString(),
+                        Core = core.ToString(),
+                        Start = solver.Value(task.Start),
+                        End = solver.Value(task.End),
+                        Suffix = task.Suffix
+                    });
+                }
+            }
+            var solution = new XmlDocument();
+            var version = solution.CreateXmlDeclaration("1.0", null, null);
+            solution.AppendChild(version);
+
+            var tables = solution.CreateElement("Tables");
+            solution.AppendChild(tables);
+
+            foreach (var assignedTask in assignedTasks)
+            {
+                Console.Write(assignedTask.Cpu);
+            }
+
+            solution.Save($"Case{CaseNumber}.xml");
         }
 
         private static TaskVar AssignVariables(int cpu, int core, Task taskNode, CpModel model, int count)
