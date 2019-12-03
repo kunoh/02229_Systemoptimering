@@ -12,7 +12,7 @@ namespace Optimization
 {
     internal static class Program
     {
-        private const string CaseNumber = "2";
+        private const string CaseNumber = "1";
         private static readonly string DirectoryName = $"..\\..\\..\\TestCases\\Case {CaseNumber}\\";
         private static Application _application;
         private static Architecture _architecture;
@@ -30,6 +30,8 @@ namespace Optimization
             
             var taskCount = tasks.Count;
             var cpuCount = cpus.Count;
+
+            var hyperPeriod = _application.Tasks.Max(t => t.Period);
 
             var intervals = new List<List<List<IntervalVar>>>();
             var periods = new Dictionary<(int core, string Id), List<TaskVar>>();
@@ -72,7 +74,7 @@ namespace Optimization
 
                 if (!chainTaskCount.TryGetValue(taskNode.Id, out var t))
                 {
-                    chainTaskCount.Add(taskNode.Id, 1);
+                    chainTaskCount.Add(taskNode.Id, hyperPeriod / taskNode.Period);
                 }
             }
 
