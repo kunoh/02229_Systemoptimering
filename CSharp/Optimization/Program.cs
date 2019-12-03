@@ -31,6 +31,7 @@ namespace Optimization
             var taskCount = tasks.Count;
             var cpuCount = cpus.Count;
 
+            // Largest period for any task
             var hyperPeriod = _application.Tasks.Max(t => t.Period);
 
             var intervals = new List<List<List<IntervalVar>>>();
@@ -170,7 +171,7 @@ namespace Optimization
             }
 
             // -- ADD OBJECTIVE --
-            var makespan = model.NewIntVar(0, 9999999999, "makespan");
+            var makespan = model.NewIntVar(0, hyperPeriod, "makespan");
             var endTimes = taskVars.Select(task => task.Value.End).ToList();
             model.AddMaxEquality(makespan, endTimes);
             model.Minimize(makespan);
@@ -221,7 +222,6 @@ namespace Optimization
 
             foreach (var assignedTask in assignedTasks)
             {
-                Console.Write(assignedTask.Cpu);
             }
 
             solution.Save($"Case{CaseNumber}.xml");
@@ -229,7 +229,7 @@ namespace Optimization
 
         private static TaskVar AssignVariables(int cpu, int core, Task taskNode, CpModel model, int count)
         {
-            var suffix = $"_{count}_{cpu}_{core}_{taskNode.Name}";
+            var suffix = $"_{cpu}_{core}_{taskNode.Name}_{count}";
 
             var start = model.NewIntVar(taskNode.Offset, taskNode.Deadline + (count * taskNode.Period), $"start{suffix}");
             var end = model.NewIntVar(taskNode.Offset, taskNode.Deadline + (count * taskNode.Period), $"end{suffix}");
