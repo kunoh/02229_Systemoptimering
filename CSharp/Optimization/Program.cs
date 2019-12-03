@@ -12,7 +12,7 @@ namespace Optimization
 {
     internal static class Program
     {
-        private const string CaseNumber = "1";
+        private const string CaseNumber = "2";
         private static readonly string DirectoryName = $"..\\..\\..\\TestCases\\Case {CaseNumber}\\";
         private static Application _application;
         private static Architecture _architecture;
@@ -68,6 +68,11 @@ namespace Optimization
                     {
                         chainTaskCount.Add(taskNode.Id, tempCount);
                     }
+                }
+
+                if (!chainTaskCount.TryGetValue(taskNode.Id, out var t))
+                {
+                    chainTaskCount.Add(taskNode.Id, 1);
                 }
             }
 
@@ -149,9 +154,6 @@ namespace Optimization
                 {
                     for (var count = 0; count < uniqueTasks; count++)
                     {
-                        // Skip tasks if it has a specific core assigned
-                        if (currentTask.CoreId != -1) continue;
-
                         var assigned = new List<IntVar>();
                         for (var core = 0; core < cpus[currentTask.CpuId].Cores.Count; core++)
                         {
@@ -160,7 +162,6 @@ namespace Optimization
                                 assigned.Add(assignTask.IsActive);
                             }
                         }
-
                         model.Add(LinearExpr.Sum(assigned) == 1);
                     }
                 }
@@ -182,8 +183,6 @@ namespace Optimization
                 Console.WriteLine("Solution found!!!");
                 SaveSolution(taskVars, solver);
             }
-
-            // -- PRINT SOLUTION --
         }
 
         /// <summary>
@@ -230,8 +229,8 @@ namespace Optimization
         {
             var suffix = $"_{count}_{cpu}_{core}_{taskNode.Name}";
 
-            var start = model.NewIntVar(taskNode.Offset, taskNode.Deadline, $"start{suffix}");
-            var end = model.NewIntVar(taskNode.Offset, taskNode.Deadline, $"end{suffix}");
+            var start = model.NewIntVar(taskNode.Offset, taskNode.Deadline + (count * taskNode.Period), $"start{suffix}");
+            var end = model.NewIntVar(taskNode.Offset, taskNode.Deadline + (count * taskNode.Period), $"end{suffix}");
             var isActive = model.NewBoolVar($"{taskNode.Name}");
 
             var interval = model.NewOptionalIntervalVar(start, taskNode.Wcet, end, isActive, $"interval{suffix}");
