@@ -205,14 +205,18 @@ namespace Optimization
                 {
                     assignedTasks.Add(new AssignedTask
                     {
+                        Id = task.Id,
                         Cpu = cpu.ToString(),
                         Core = core.ToString(),
                         Start = solver.Value(task.Start),
                         End = solver.Value(task.End),
-                        Suffix = task.Suffix
+                        Suffix = task.Suffix,
+                        Duration = task.Duration
                     });
                 }
             }
+
+            assignedTasks = assignedTasks.OrderBy(t => t.Start).ToList();
             var solution = new XmlDocument();
             var version = solution.CreateXmlDeclaration("1.0", null, null);
             solution.AppendChild(version);
@@ -220,8 +224,47 @@ namespace Optimization
             var tables = solution.CreateElement("Tables");
             solution.AppendChild(tables);
 
+            foreach (var cpu in _architecture.Cpus)
+            {
+                foreach (var core in cpu.Cores)
+                {
+                    var schedule = solution.CreateElement("Schedule");
+                    
+                    var cpuId = solution.CreateAttribute("CpuId");
+                    var coreId = solution.CreateAttribute("CoreId");
+
+                    cpuId.Value = cpu.Id;
+                    coreId.Value = core.Id;
+                    
+                    schedule.Attributes.Append(coreId);
+                    schedule.Attributes.Append(cpuId);
+                    tables.AppendChild(schedule);
+
+                    foreach (var task in assignedTasks)
+                    {
+                        if (task.Core == core.Id && task.Cpu == cpu.Id)
+                        {
+                            var slice = solution.CreateElement("Slice");
+                            var start = solution.CreateAttribute("Start");
+                            var duration = solution.CreateAttribute("Duration");
+                            var taskId = solution.CreateAttribute("TaskId");
+
+                            start.Value = task.Start.ToString();
+                            duration.Value = task.Duration.ToString();
+                            taskId.Value = task.Id;
+                            slice.Attributes.Append(start);
+                            slice.Attributes.Append(duration);
+                            slice.Attributes.Append(taskId);
+
+                            schedule.AppendChild(slice);
+                        }
+                    }
+                }
+            }
+
             foreach (var assignedTask in assignedTasks)
             {
+                
             }
 
             solution.Save($"Case{CaseNumber}.xml");
@@ -238,6 +281,8 @@ namespace Optimization
             var interval = model.NewOptionalIntervalVar(start, taskNode.Wcet, end, isActive, $"interval{suffix}");
 
             return new TaskVar {
+                Id = taskNode.Id,
+                Duration = taskNode.Wcet,
                 Start = start,
                 End = end,
                 Interval = interval,

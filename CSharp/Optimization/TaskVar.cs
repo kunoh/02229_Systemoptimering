@@ -12,5 +12,9 @@ namespace Optimization
         public IntervalVar Interval { get; set; }
         public IntVar IsActive { get; set; }
         public string Suffix { get; set; }
+        
+        public string Id { get; set; }
+        
+        public int Duration { get; set; }
     }
 }

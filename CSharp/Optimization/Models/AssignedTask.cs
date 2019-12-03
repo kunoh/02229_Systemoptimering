@@ -11,5 +11,9 @@ namespace Optimization.Models
         public string Cpu { get; set; }
         public string Core { get; set; }
         public string Suffix { get; set; }
+        
+        public string Id { get; set; }
+        
+        public int Duration { get; set; }
     }
 }
