@@ -92,6 +92,7 @@ namespace Optimization
                 AddTaskPeriodConstraint(periods, model, tasks);
                 AddScheduleOnlyOnceConstraint(taskCount, tasks, chainTaskAmount, cpus, taskVars, model);
 
+//                Constraint to make order for chains
 //                foreach (var chain in _application.Chains)
 //                {
 //                    for (var r = 1; r < chain.Runnables.Count; r++)
