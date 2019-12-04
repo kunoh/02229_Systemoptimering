@@ -12,105 +12,112 @@ namespace Optimization
 {
     internal static class Program
     {
-        private const string CaseNumber = "1";
-        private static readonly string DirectoryName = $"..\\..\\..\\TestCases\\Case {CaseNumber}\\";
+        private const int Cases = 6;
+        private static string _caseNumber;
+        private static string _directoryName;
         private static Application _application;
         private static Architecture _architecture;
 
         private static void Main()
         {
-            // -- CREATE THE MODEL --
-            var model = new CpModel();
-            
-            // -- SET UP DATA --
-            ParseDocuments();
-
-            var tasks = _application.Tasks;
-            var cpus = _architecture.Cpus;
-            
-            var taskCount = tasks.Count;
-            var cpuCount = cpus.Count;
-
-            // Largest period for any task
-            var hyperPeriod = _application.Tasks.Max(t => t.Period);
-
-            var intervals = new List<List<List<IntervalVar>>>();
-            var periods = new Dictionary<(int core, string Id), List<TaskVar>>();
-
-            // Initialize list of intervals on a per cpu per core basis
-            for (var cpu = 0; cpu < cpuCount; cpu++) 
+            for (var @case = 1; @case <= Cases; @case++)
             {
-                intervals.Add(new List<List<IntervalVar>>());
-                for (var core = 0; core < cpus[cpu].Cores.Count; core++)
+                _caseNumber = @case.ToString();
+                _directoryName = $"..\\..\\..\\TestCases\\Case {_caseNumber}\\";
+                // -- CREATE THE MODEL --
+                var model = new CpModel();
+
+                // -- SET UP DATA --
+                ParseDocuments();
+
+                var tasks = _application.Tasks;
+                var cpus = _architecture.Cpus;
+
+                var taskCount = tasks.Count;
+                var cpuCount = cpus.Count;
+
+                // Largest period for any task
+                var hyperPeriod = _application.Tasks.Max(t => t.Period);
+
+                var intervals = new List<List<List<IntervalVar>>>();
+                var periods = new Dictionary<(int core, string Id), List<TaskVar>>();
+
+                // Initialize list of intervals on a per cpu per core basis
+                for (var cpu = 0; cpu < cpuCount; cpu++)
                 {
-                    intervals[cpu].Add(new List<IntervalVar>());
-                }
-            }
-
-            var taskVars = new Dictionary<(int, int, int, int), TaskVar>();
-            
-            var chainTaskCount = new Dictionary<string, int>();
-
-            for (var task = 0; task < taskCount; task++)
-            {
-                var taskNode = tasks[task];
-                var tempCount = 0;
-
-                for (var chain = 0; chain < _application.Chains.Count; chain++)
-                {
-                    tempCount = _application.Chains[chain].Runnables.Count(t => taskNode.Name.Equals(t));
-                        
-                    if (chainTaskCount.TryGetValue(taskNode.Id, out var value))
+                    intervals.Add(new List<List<IntervalVar>>());
+                    for (var core = 0; core < cpus[cpu].Cores.Count; core++)
                     {
-                        if (value < tempCount)
+                        intervals[cpu].Add(new List<IntervalVar>());
+                    }
+                }
+
+                var taskVars = new Dictionary<(int, int, int, int), TaskVar>();
+
+                var chainTaskCount = new Dictionary<string, int>();
+
+                // Any tasks which appear in a chain are set to appear
+                // an amount of times equal to the maximum amount of times it appears in a chain.
+                for (var task = 0; task < taskCount; task++)
+                {
+                    var taskNode = tasks[task];
+
+                    for (var chain = 0; chain < _application.Chains.Count; chain++)
+                    {
+                        var tempCount = _application.Chains[chain].Runnables.Count(runnable => taskNode.Name.Equals(runnable));
+
+                        if (chainTaskCount.TryGetValue(taskNode.Id, out var value))
                         {
-                            chainTaskCount[taskNode.Id] = tempCount;
+                            if (value < tempCount)
+                            {
+                                chainTaskCount[taskNode.Id] = tempCount;
+                            }
+                        }
+                        else if (tempCount != 0)
+                        {
+                            chainTaskCount.Add(taskNode.Id, tempCount);
                         }
                     }
-                    else if(tempCount != 0)
+                    
+                    // Any other tasks are added as many times as the can run within the given hyperperiod
+                    if (!chainTaskCount.TryGetValue(taskNode.Id, out var t))
                     {
-                        chainTaskCount.Add(taskNode.Id, tempCount);
+                        chainTaskCount.Add(taskNode.Id, hyperPeriod / taskNode.Period);
                     }
                 }
 
-                if (!chainTaskCount.TryGetValue(taskNode.Id, out var t))
+                // -- ADD VARIABLES --
+                for (var cpu = 0; cpu < cpuCount; cpu++)
                 {
-                    chainTaskCount.Add(taskNode.Id, hyperPeriod / taskNode.Period);
-                }
-            }
-
-            // -- ADD VARIABLES --
-            for (var cpu = 0; cpu < cpuCount; cpu++)
-            {
-                for (var core = 0; core < cpus[cpu].Cores.Count; core++)
-                {
-                    // TODO: Assign tasks to CPU, to avoid iterating all tasks for each cpu
-                    for (var task = 0; task < taskCount; task++)
+                    for (var core = 0; core < cpus[cpu].Cores.Count; core++)
                     {
-                        var taskNode = tasks[task];
-                        
-                        // If current node is not assigned to the current CPU skip it.
-                        if (cpu != taskNode.CpuId) continue;
-                        
-                        // If current node is not assigned to current core, and is not able to run on any core, skip
-                        if (core != taskNode.CoreId && taskNode.CoreId != -1) continue;
-                        
-                        // If current task does not appear in any chain, skip it.
-                        if (!chainTaskCount.TryGetValue(taskNode.Id, out var amount)) continue;
-                        
-                        periods[(core, taskNode.Id)] = new List<TaskVar>();
-                        for (var count = 0; count < amount; count++)
+                        // TODO: Assign tasks to CPU, to avoid iterating all tasks for each cpu
+                        for (var task = 0; task < taskCount; task++)
                         {
-                            var taskVar = AssignVariables(cpu, core, taskNode, model, count);
-                            periods[(core, taskNode.Id)].Add(taskVar);
-                            intervals[cpu][core].Add(taskVar.Interval);
-                            taskVars[(cpu, core, task, count)] = taskVar;
+                            var taskNode = tasks[task];
+
+                            // If current node is not assigned to the current CPU skip it.
+                            if (cpu != taskNode.CpuId) continue;
+
+                            // If current node is not assigned to current core, and is not able to run on any core, skip
+                            if (core != taskNode.CoreId && taskNode.CoreId != -1) continue;
+
+                            // If current task does not appear in any chain, skip it.
+                            if (!chainTaskCount.TryGetValue(taskNode.Id, out var amount)) continue;
+
+                            periods[(core, taskNode.Id)] = new List<TaskVar>();
+                            for (var count = 0; count < amount; count++)
+                            {
+                                var taskVar = AssignVariables(cpu, core, taskNode, model, count);
+                                periods[(core, taskNode.Id)].Add(taskVar);
+                                intervals[cpu][core].Add(taskVar.Interval);
+                                taskVars[(cpu, core, task, count)] = taskVar;
+                            }
                         }
                     }
                 }
-            }
 
-            // Add a period as an interval, to ensure a task is not planned until its period has passed
+                // Add a period as an interval, to ensure a task is not planned until its period has passed
 //            foreach (var (key, value) in periods)
 //            {
 //                var count = value.Count;
@@ -126,65 +133,80 @@ namespace Optimization
 //                }
 //            }
 
-            // -- ADD CONSTRAINTS --
-            // Ensure nothing is scheduled concurrently on the same core
-            for (var cpu = 0; cpu < cpuCount; cpu++)
-            {
-                for (var core = 0; core < cpus[cpu].Cores.Count; core++)
+                // -- ADD CONSTRAINTS --
+                // Ensure nothing is scheduled concurrently on the same core
+                for (var cpu = 0; cpu < cpuCount; cpu++)
                 {
-                    model.AddNoOverlap(intervals[cpu][core]);
-                }
-            }
-
-            foreach (var ((_, id), value) in periods)
-            {
-                for (var task = 0; task < value.Count - 1; task++)
-                {
-                    var taskIntervals = periods.Where(tI => tI.Key.Id == id).Select(tI => tI.Value).ToList();
-
-                    foreach (var taskInterval in taskIntervals)
+                    for (var core = 0; core < cpus[cpu].Cores.Count; core++)
                     {
-                        model.Add(taskInterval[task + 1].Start - value[task].End >= tasks.FirstOrDefault(t => t.Id == id).Period);
+                        model.AddNoOverlap(intervals[cpu][core]);
                     }
                 }
-            }
 
-            // If a task can run on any core, ensure it is only scheduled for one core
-            for (var task = 0; task < taskCount; task++)
-            {
-                var currentTask = tasks[task];
-                if (chainTaskCount.TryGetValue(currentTask.Id, out var uniqueTasks))
+                foreach (var ((_, id), value) in periods)
                 {
-                    for (var count = 0; count < uniqueTasks; count++)
+                    for (var task = 0; task < value.Count - 1; task++)
                     {
-                        var assigned = new List<IntVar>();
-                        for (var core = 0; core < cpus[currentTask.CpuId].Cores.Count; core++)
+                        var taskIntervals = periods.Where(tI => tI.Key.Id == id).Select(tI => tI.Value).ToList();
+
+                        foreach (var taskInterval in taskIntervals)
                         {
-                            if (taskVars.TryGetValue((currentTask.CpuId, core, task, count), out var assignTask))
-                            {
-                                assigned.Add(assignTask.IsActive);
-                            }
+                            model.Add(taskInterval[task + 1].Start - value[task].End >=
+                                      tasks.FirstOrDefault(t => t.Id == id).Period);
                         }
-                        model.Add(LinearExpr.Sum(assigned) == 1);
                     }
                 }
-            }
 
-            // -- ADD OBJECTIVE --
-            var makespan = model.NewIntVar(0, hyperPeriod, "makespan");
-            var endTimes = taskVars.Select(task => task.Value.End).ToList();
-            model.AddMaxEquality(makespan, endTimes);
-            model.Minimize(makespan);
+                // If a task can run on any core, ensure it is only scheduled for one core
+                for (var task = 0; task < taskCount; task++)
+                {
+                    var currentTask = tasks[task];
+                    if (chainTaskCount.TryGetValue(currentTask.Id, out var uniqueTasks))
+                    {
+                        for (var count = 0; count < uniqueTasks; count++)
+                        {
+                            var assigned = new List<IntVar>();
+                            if (currentTask.CoreId == -1)
+                            {
+                                for (var core = 0; core < cpus[currentTask.CpuId].Cores.Count; core++)
+                                {
+                                    if (taskVars.TryGetValue((currentTask.CpuId, core, task, count),
+                                        out var assignTask))
+                                    {
+                                        assigned.Add(assignTask.IsActive);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                if (taskVars.TryGetValue((currentTask.CpuId, currentTask.CoreId, task, count),
+                                    out var assignTask))
+                                {
+                                    assigned.Add(assignTask.IsActive);
+                                }
+                            }
 
-            // -- SOLVE --
-            var solver = new CpSolver();
-            var status = solver.Solve(model);
-            solver.SearchAllSolutions(model, new SolutionPrinter(taskVars, cpus));
-            
-            if (status == CpSolverStatus.Optimal || status == CpSolverStatus.Feasible)
-            {
-                Console.WriteLine("Solution found!!!");
-                SaveSolution(taskVars, solver);
+                            model.Add(LinearExpr.Sum(assigned) == 1);
+                        }
+                    }
+                }
+
+                // -- ADD OBJECTIVE --
+                var makespan = model.NewIntVar(0, hyperPeriod, "makespan");
+                var endTimes = taskVars.Select(task => task.Value.End).ToList();
+                model.AddMaxEquality(makespan, endTimes);
+                model.Minimize(makespan);
+
+                // -- SOLVE --
+                var solver = new CpSolver();
+                var status = solver.Solve(model);
+                solver.SearchAllSolutions(model, new SolutionPrinter(taskVars, cpus));
+
+                if (status == CpSolverStatus.Optimal || status == CpSolverStatus.Feasible)
+                {
+                    Console.WriteLine("Solution found!!!");
+                    SaveSolution(taskVars, solver);
+                }
             }
         }
 
@@ -267,7 +289,7 @@ namespace Optimization
                 
             }
 
-            solution.Save($"Case{CaseNumber}.xml");
+            solution.Save($"Case{_caseNumber}.xml");
         }
 
         private static TaskVar AssignVariables(int cpu, int core, Task taskNode, CpModel model, int count)
@@ -293,8 +315,8 @@ namespace Optimization
 
         private static void ParseDocuments()
         {
-            var applicationDir = Directory.GetFiles(DirectoryName, "*.tsk")[0];
-            var architectureDir = Directory.GetFiles(DirectoryName, "*.cfg")[0];
+            var applicationDir = Directory.GetFiles(_directoryName, "*.tsk")[0];
+            var architectureDir = Directory.GetFiles(_directoryName, "*.cfg")[0];
 
             var applicationDoc = new XmlDocument();
             var architectureDoc = new XmlDocument();
