@@ -12,7 +12,7 @@ namespace Optimization
 {
     internal static class Program
     {
-        private const int Cases = 1;
+        private const int Cases = 6;
         private static string _caseNumber;
         private static string _directoryName;
         private static Application _application;
@@ -20,8 +20,10 @@ namespace Optimization
 
         private static void Main()
         {
+            
             for (var @case = 1; @case <= Cases; @case++)
             {
+                Console.WriteLine($"Test case {_caseNumber} start: {DateTime.Now.ToString("MM/dd/yyyy hh:mm:ss.fff tt")}");
                 _caseNumber = @case.ToString();
                 _directoryName = $"..\\..\\..\\TestCases\\Case {_caseNumber}\\";
                 // -- CREATE THE MODEL --
@@ -128,12 +130,15 @@ namespace Optimization
                 // -- SOLVE --
                 var solver = new CpSolver();
                 var status = solver.Solve(model);
-                solver.SearchAllSolutions(model, new SolutionPrinter(taskVars, cpus));
 
                 if (status == CpSolverStatus.Optimal || status == CpSolverStatus.Feasible)
                 {
-                    Console.WriteLine("Solution found!!!");
+                    Console.WriteLine($"Test case {_caseNumber} end: {DateTime.Now.ToString("MM/dd/yyyy hh:mm:ss.fff tt")}");
                     SaveSolution(taskVars, solver);
+                }
+                else
+                {
+                    Console.WriteLine($"Test case {_caseNumber} no solution found");
                 }
             }
         }

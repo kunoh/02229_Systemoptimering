@@ -1,0 +1,7 @@
+Project folder contains 3 folders
+ - JobShopProblem - which is an implementation of the tutorial provided by google OR-tools
+ - Optimization - which contains an implementation of the project, along with the test files
+ - OptimizationExercise - which contains an implementation of the exercise, along with the test files
+ 
+The project is run by opening the solution file, restoring the nuget packages, and then running the specified project.
+This will automaticlly generate output files for all test cases.
